@@ -1,21 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { loadLocalWorkspace, saveLocalItems } from './data/localDatabase'
+import type { Category, ShoppingItem } from './domain/shopping'
 
-type Category = 'Fruta y verdura' | 'Lácteos' | 'Despensa' | 'Bebidas' | 'Hogar' | 'Otros'
 type Filter = 'Pendientes' | 'Todo' | 'Comprados'
 
-type ShoppingItem = {
-  id: string
-  name: string
-  quantity: number
-  unit: string
-  category: Category
-  note: string
-  completed: boolean
-  createdAt: number
-}
-
-const STORAGE_KEY = 'mi-compra.shopping-items.v1'
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
 const categoryIcons: Record<Category, string> = {
   'Fruta y verdura': '🥑',
@@ -26,19 +15,10 @@ const categoryIcons: Record<Category, string> = {
   Otros: '🛒',
 }
 
-function readItems(): ShoppingItem[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return []
-    const parsed: unknown = JSON.parse(stored)
-    return Array.isArray(parsed) ? (parsed as ShoppingItem[]) : []
-  } catch {
-    return []
-  }
-}
-
 function App() {
-  const [items, setItems] = useState<ShoppingItem[]>(readItems)
+  const [items, setItems] = useState<ShoppingItem[]>([])
+  const [householdName, setHouseholdName] = useState('Mi casa')
+  const [isReady, setIsReady] = useState(false)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [unit, setUnit] = useState('ud.')
@@ -47,12 +27,21 @@ function App() {
   const [filter, setFilter] = useState<Filter>('Pendientes')
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-    } catch {
-      // La lista sigue funcionando durante la sesión aunque el almacenamiento esté bloqueado.
-    }
-  }, [items])
+    let active = true
+    loadLocalWorkspace().then((workspace) => {
+      if (!active) return
+      setItems(workspace.items)
+      setHouseholdName(workspace.household.name)
+      setIsReady(true)
+    }).catch(() => {
+      if (active) setIsReady(true)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (isReady) void saveLocalItems(items)
+  }, [items, isReady])
 
   const pendingCount = items.filter((item) => !item.completed).length
   const completedCount = items.length - pendingCount
@@ -80,6 +69,9 @@ function App() {
       note: note.trim(),
       completed: false,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
+      householdId: 'household-local',
+      listId: 'shopping-list-default',
     }
     setItems((current) => [newItem, ...current])
     setName('')
@@ -109,7 +101,7 @@ function App() {
             <span className="brand-mark" aria-hidden="true">✓</span>
             <span><strong>Mi Compra</strong><small>La compra de casa, en orden</small></span>
           </a>
-          <div className="household-pill"><span className="online-dot" /> Mi casa <span className="pill-avatar">⌂</span></div>
+          <div className="household-pill"><span className="online-dot" /> {householdName} <span className="pill-avatar">⌂</span></div>
         </header>
 
         <section className="welcome">
@@ -163,7 +155,7 @@ function App() {
               </div>
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
-              <button className="add-button" type="submit" disabled={!name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
+              <button className="add-button" type="submit" disabled={!isReady || !name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
             </form>
           </section>
 
@@ -180,7 +172,9 @@ function App() {
               ))}
             </div>
 
-            {visibleItems.length === 0 ? (
+            {!isReady ? (
+              <div className="empty-state"><span className="empty-illustration">⌛</span><strong>Preparando tu lista…</strong><p>Estamos recuperando los productos guardados en este dispositivo.</p></div>
+            ) : visibleItems.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-illustration">{filter === 'Comprados' ? '🧺' : '🌱'}</span>
                 <strong>{filter === 'Comprados' ? 'Aún no has marcado productos' : filter === 'Todo' ? 'Tu lista está vacía' : '¡Todo al día!'}</strong>
@@ -202,7 +196,7 @@ function App() {
               </ul>
             )}
             {completedCount > 0 && <button className="clear-button" type="button" onClick={clearCompleted}>Retirar productos comprados</button>}
-            <div className="list-footnote"><span>🔒</span> Esta primera versión guarda la lista en este dispositivo. La sincronización entre familiares se añadirá al conectar el backend.</div>
+            <div className="list-footnote"><span>🔒</span> Los datos se guardan en este dispositivo. La sincronización familiar requiere configurar el backend seguro.</div>
           </section>
         </div>
 
