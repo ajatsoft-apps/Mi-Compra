@@ -55,31 +55,31 @@ create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$;
+$$;
 
 create or replace function public.protect_household_owner()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   if new.created_by is distinct from old.created_by then
     raise exception 'Household creator cannot be changed';
   end if;
   return new;
 end;
-$;
+$$;
 
 create or replace function public.protect_shopping_list_identity()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   if new.household_id is distinct from old.household_id
      or new.created_by is distinct from old.created_by then
@@ -87,13 +87,13 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 create or replace function public.protect_shopping_item_identity()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   if new.household_id is distinct from old.household_id
      or new.list_id is distinct from old.list_id
@@ -102,7 +102,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists households_protect_owner on public.households;
 create trigger households_protect_owner
@@ -123,7 +123,7 @@ create or replace function public.touch_shopping_item()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   new.updated_at = now();
   if new.is_completed and not old.is_completed then
@@ -133,7 +133,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists shopping_lists_touch_updated_at on public.shopping_lists;
 create trigger shopping_lists_touch_updated_at
