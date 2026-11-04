@@ -18,7 +18,9 @@ const categoryIcons: Record<Category, string> = {
 function App() {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [householdName, setHouseholdName] = useState('Mi casa')
+  const [householdId, setHouseholdId] = useState('household-local')
   const [listId, setListId] = useState('shopping-list-default')
+  const [storageError, setStorageError] = useState('')
   const [isReady, setIsReady] = useState(false)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('1')
@@ -33,16 +35,20 @@ function App() {
       if (!active) return
       setItems(workspace.items)
       setHouseholdName(workspace.household.name)
+      setHouseholdId(workspace.household.id)
       setListId(workspace.list.id)
       setIsReady(true)
     }).catch(() => {
-      if (active) setIsReady(true)
+      if (active) {
+        setStorageError('No se pudo recuperar el almacenamiento local. Tus cambios podrían no conservarse.')
+        setIsReady(true)
+      }
     })
     return () => { active = false }
   }, [])
 
   useEffect(() => {
-    if (isReady) void saveLocalItems(listId, items)
+    if (isReady) void saveLocalItems(listId, items).catch(() => setStorageError('No se pudo guardar la lista en este dispositivo. Comprueba el espacio disponible del navegador.'))
   }, [items, isReady, listId])
 
   const pendingCount = items.filter((item) => !item.completed).length
@@ -72,7 +78,7 @@ function App() {
       completed: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      householdId: 'household-local',
+      householdId,
       listId,
     }
     setItems((current) => [newItem, ...current])
@@ -157,7 +163,7 @@ function App() {
               </div>
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
-              <button className="add-button" type="submit" disabled={!isReady || !name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
+              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
             </form>
           </section>
 
@@ -198,7 +204,7 @@ function App() {
               </ul>
             )}
             {completedCount > 0 && <button className="clear-button" type="button" onClick={clearCompleted}>Retirar productos comprados</button>}
-            <div className="list-footnote"><span>🔒</span> Los datos se guardan en este dispositivo. La sincronización familiar requiere configurar el backend seguro.</div>
+            <div className="list-footnote"><span>🔒</span> {storageError || 'Los datos se guardan en este dispositivo. La sincronización familiar requiere configurar el backend seguro.'}</div>
           </section>
         </div>
 
