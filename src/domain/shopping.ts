@@ -12,6 +12,7 @@ export type ShoppingItem = {
   completed: boolean
   createdAt: number
   updatedAt: number
+  deletedAt?: number | null
 }
 
 export type Household = {
