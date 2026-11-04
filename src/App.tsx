@@ -1,33 +1,211 @@
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+
+type Category = 'Fruta y verdura' | 'Lácteos' | 'Despensa' | 'Bebidas' | 'Hogar' | 'Otros'
+type Filter = 'Pendientes' | 'Todo' | 'Comprados'
+
+type ShoppingItem = {
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  category: Category
+  note: string
+  completed: boolean
+  createdAt: number
+}
+
+const STORAGE_KEY = 'mi-compra.shopping-items.v1'
+const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
+const categoryIcons: Record<Category, string> = {
+  'Fruta y verdura': '🥑',
+  Lácteos: '🥛',
+  Despensa: '🥫',
+  Bebidas: '🧃',
+  Hogar: '🧽',
+  Otros: '🛒',
+}
+
+function readItems(): ShoppingItem[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return []
+    const parsed: unknown = JSON.parse(stored)
+    return Array.isArray(parsed) ? (parsed as ShoppingItem[]) : []
+  } catch {
+    return []
+  }
+}
+
 function App() {
+  const [items, setItems] = useState<ShoppingItem[]>(readItems)
+  const [name, setName] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [unit, setUnit] = useState('ud.')
+  const [category, setCategory] = useState<Category>('Otros')
+  const [note, setNote] = useState('')
+  const [filter, setFilter] = useState<Filter>('Pendientes')
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // La lista sigue funcionando durante la sesión aunque el almacenamiento esté bloqueado.
+    }
+  }, [items])
+
+  const pendingCount = items.filter((item) => !item.completed).length
+  const completedCount = items.length - pendingCount
+  const visibleItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      if (filter === 'Pendientes') return !item.completed
+      if (filter === 'Comprados') return item.completed
+      return true
+    })
+    return filtered.sort((a, b) => Number(a.completed) - Number(b.completed) || b.createdAt - a.createdAt)
+  }, [items, filter])
+
+  function addItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const cleanName = name.trim()
+    const parsedQuantity = Number(quantity)
+    if (!cleanName || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) return
+
+    const newItem: ShoppingItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: cleanName,
+      quantity: parsedQuantity,
+      unit: unit.trim() || 'ud.',
+      category,
+      note: note.trim(),
+      completed: false,
+      createdAt: Date.now(),
+    }
+    setItems((current) => [newItem, ...current])
+    setName('')
+    setQuantity('1')
+    setUnit('ud.')
+    setNote('')
+  }
+
+  function toggleItem(id: string) {
+    setItems((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item))
+  }
+
+  function removeItem(id: string) {
+    setItems((current) => current.filter((item) => item.id !== id))
+  }
+
+  function clearCompleted() {
+    setItems((current) => current.filter((item) => !item.completed))
+    setFilter('Pendientes')
+  }
+
   return (
-    <main className="min-h-screen bg-paper px-5 py-8 text-ink sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col">
-        <header className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-600 text-xl text-white shadow-soft" aria-hidden="true">✓</div>
-          <div>
-            <p className="text-lg font-bold tracking-tight">Mi Compra</p>
-            <p className="text-xs text-slate-500">La compra de casa, en orden</p>
-          </div>
+    <main className="app-shell">
+      <div className="app-container">
+        <header className="topbar">
+          <a className="brand" href="/" aria-label="Mi Compra, inicio">
+            <span className="brand-mark" aria-hidden="true">✓</span>
+            <span><strong>Mi Compra</strong><small>La compra de casa, en orden</small></span>
+          </a>
+          <div className="household-pill"><span className="online-dot" /> Mi casa <span className="pill-avatar">⌂</span></div>
         </header>
 
-        <section className="my-auto max-w-2xl py-16">
-          <span className="inline-flex rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Proyecto en construcción</span>
-          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
-            Comprar mejor empieza por organizarse.
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
-            Estamos preparando un espacio compartido para la lista familiar, las preferencias de cada producto y la comparación de precios con datos verificables.
-          </p>
-          <div className="mt-9 flex flex-wrap gap-3 text-sm">
-            <span className="rounded-xl border border-brand-100 bg-white px-4 py-3 shadow-sm">Lista familiar compartida</span>
-            <span className="rounded-xl border border-brand-100 bg-white px-4 py-3 shadow-sm">Preferencias inteligentes</span>
-            <span className="rounded-xl border border-brand-100 bg-white px-4 py-3 shadow-sm">Precios contrastados</span>
+        <section className="welcome">
+          <div>
+            <p className="eyebrow">TU LISTA DE LA COMPRA</p>
+            <h1>Que no se te<br /><span>olvide nada.</span></h1>
+            <p className="welcome-copy">Añade lo que falta en casa y tenlo todo a mano cuando vayas al supermercado.</p>
+          </div>
+          <div className="basket-art" aria-hidden="true"><span>🥬</span><span>🥖</span><span>🍊</span><span>🥛</span></div>
+        </section>
+
+        <section className="summary-grid" aria-label="Resumen de la lista">
+          <div className="summary-card summary-main">
+            <span className="summary-icon">📝</span>
+            <div><strong>{pendingCount}</strong><span>por comprar</span></div>
+          </div>
+          <div className="summary-card">
+            <span className="summary-icon muted">✓</span>
+            <div><strong>{completedCount}</strong><span>en el carrito</span></div>
           </div>
         </section>
 
-        <footer className="border-t border-slate-200 pt-5 text-xs text-slate-500">
-          Mi Compra · Versión inicial 0.1.0
-        </footer>
+        <div className="content-grid">
+          <section className="panel add-panel">
+            <div className="panel-heading">
+              <div><p className="eyebrow">AÑADIR A LA LISTA</p><h2>¿Qué hace falta?</h2></div>
+              <span className="heading-plus">＋</span>
+            </div>
+            <form onSubmit={addItem}>
+              <label className="field-label" htmlFor="product-name">Producto</label>
+              <input id="product-name" className="text-input product-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Leche semidesnatada" maxLength={90} required />
+              <div className="quantity-row">
+                <div className="quantity-field">
+                  <label className="field-label" htmlFor="product-quantity">Cantidad</label>
+                  <input id="product-quantity" className="text-input" type="number" min="0.1" step="0.1" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+                </div>
+                <div className="unit-field">
+                  <label className="field-label" htmlFor="product-unit">Unidad</label>
+                  <select id="product-unit" className="text-input" value={unit} onChange={(event) => setUnit(event.target.value)}>
+                    <option>ud.</option><option>kg</option><option>g</option><option>L</option><option>ml</option><option>pack</option><option>caja</option>
+                  </select>
+                </div>
+              </div>
+              <label className="field-label category-label">Categoría</label>
+              <div className="category-options">
+                {categories.map((option) => (
+                  <button className={category === option ? 'category-chip selected' : 'category-chip'} type="button" key={option} onClick={() => setCategory(option)}>
+                    <span>{categoryIcons[option]}</span>{option}
+                  </button>
+                ))}
+              </div>
+              <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
+              <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
+              <button className="add-button" type="submit" disabled={!name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
+            </form>
+          </section>
+
+          <section className="panel list-panel">
+            <div className="list-heading">
+              <div><p className="eyebrow">COMPRA FAMILIAR</p><h2>Lista de casa <span className="item-count">{pendingCount}</span></h2></div>
+              <span className="list-icon">🛒</span>
+            </div>
+            <div className="filter-tabs" role="tablist" aria-label="Filtrar productos">
+              {(['Pendientes', 'Todo', 'Comprados'] as Filter[]).map((option) => (
+                <button key={option} type="button" role="tab" aria-selected={filter === option} className={filter === option ? 'filter-tab active' : 'filter-tab'} onClick={() => setFilter(option)}>
+                  {option}{option === 'Pendientes' && <span>{pendingCount}</span>}
+                </button>
+              ))}
+            </div>
+
+            {visibleItems.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-illustration">{filter === 'Comprados' ? '🧺' : '🌱'}</span>
+                <strong>{filter === 'Comprados' ? 'Aún no has marcado productos' : filter === 'Todo' ? 'Tu lista está vacía' : '¡Todo al día!'}</strong>
+                <p>{filter === 'Comprados' ? 'Cuando marques algo como comprado, aparecerá aquí.' : 'Añade el primer producto desde el formulario.'}</p>
+              </div>
+            ) : (
+              <ul className="shopping-list">
+                {visibleItems.map((item) => (
+                  <li className={item.completed ? 'shopping-item completed' : 'shopping-item'} key={item.id}>
+                    <button className="check-button" type="button" onClick={() => toggleItem(item.id)} aria-label={item.completed ? `Marcar ${item.name} como pendiente` : `Marcar ${item.name} como comprado`} aria-pressed={item.completed}>{item.completed ? '✓' : ''}</button>
+                    <span className="item-category-icon" aria-hidden="true">{categoryIcons[item.category]}</span>
+                    <div className="item-details">
+                      <strong>{item.name}</strong>
+                      <span>{item.quantity} {item.unit}{item.note ? ` · ${item.note}` : ''}</span>
+                    </div>
+                    <button className="remove-button" type="button" onClick={() => removeItem(item.id)} aria-label={`Eliminar ${item.name}`}>×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {completedCount > 0 && <button className="clear-button" type="button" onClick={clearCompleted}>Retirar productos comprados</button>}
+            <div className="list-footnote"><span>🔒</span> Esta primera versión guarda la lista en este dispositivo. La sincronización entre familiares se añadirá al conectar el backend.</div>
+          </section>
+        </div>
+
+        <footer className="app-footer"><span>Mi Compra</span><span>Pequeños gestos, compras más fáciles.</span></footer>
       </div>
     </main>
   )

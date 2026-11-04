@@ -10,22 +10,25 @@ Cerrada. React + TypeScript, Vite, PWA, Supabase, PostgreSQL, RLS, Realtime e In
 
 ## Fase 3 — Proyecto y estructura inicial
 
+Cerrada. Estructura React/TypeScript/Vite y PWA creadas. La compilación de producción y la comprobación de tipos han superado GitHub Actions.
+
+## Fase 4 — Primera base funcional
+
 En curso.
 
-- [x] Repositorio privado creado.
-- [x] Rama de trabajo aislada de `main`.
-- [ ] Estructura base React/TypeScript/Vite.
-- [ ] Configuración PWA inicial.
-- [ ] Documentación de arquitectura y hoja de ruta.
-- [ ] Validación de compilación y tipos.
-
-## Fase 4 — Base funcional
-
-Pendiente de aprobación: navegación, modelo de familia/listas y primer flujo de añadir/comprar productos.
+- [x] Pantalla inicial de la lista de compra.
+- [x] Añadir productos con cantidad, unidad, categoría y nota.
+- [x] Marcar productos como comprados y retirarlos de la lista.
+- [x] Filtros de pendientes, todos y comprados.
+- [x] Guardado local entre sesiones.
+- [x] Interfaz adaptable a móvil, tablet y escritorio.
+- [ ] Pruebas funcionales y revisión de accesibilidad.
+- [ ] Modelo persistente de familia y miembros.
+- [ ] Sincronización real entre dispositivos mediante backend.
 
 ## Fase 5 — Backend y sincronización
 
-Pendiente: proyecto Supabase, esquema SQL, RLS, autenticación familiar y Realtime.
+Pendiente: proyecto Supabase, esquema SQL, RLS, autenticación familiar y Realtime. La sincronización entre miembros no se simula en el cliente.
 
 ## Fase 6 — Catálogo, preferencias y compras
 
