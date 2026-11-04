@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - 'fase-3/**'
+      - 'fase-4/**'
   pull_request:
     branches:
       - main
@@ -25,5 +26,9 @@ jobs:
           node-version: 20
       - name: Instalar dependencias
         run: npm install
+      - name: Revisar vulnerabilidades de dependencias
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "const a=require('./npm-audit.json'); console.log('Resumen de vulnerabilidades:', JSON.stringify(a.metadata?.vulnerabilities ?? {}, null, 2)); for (const [name, item] of Object.entries(a.vulnerabilities ?? {})) console.log(name + ': ' + item.severity + ', directo=' + item.isDirect + ', fix=' + JSON.stringify(item.fixAvailable));"
       - name: Comprobar tipos y compilar
         run: npm run build
