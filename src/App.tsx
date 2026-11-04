@@ -89,7 +89,7 @@ function App() {
   }
 
   function toggleItem(id: string) {
-    setItems((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item))
+    setItems((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed, updatedAt: Date.now() } : item))
   }
 
   function removeItem(id: string) {
