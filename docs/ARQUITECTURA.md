@@ -11,14 +11,24 @@ Aplicación PWA privada para organizar la compra familiar, sincronizar una lista
 - Tailwind CSS para estilos.
 - Zustand para estado local de interfaz y flujos cliente.
 - TanStack Query para consultas, caché y sincronización con servicios.
-- IndexedDB (mediante `idb`) como base local para la experiencia offline.
+- IndexedDB (mediante `idb`) como base local para la experiencia offline, con metadatos del hogar/lista activa y marcas de borrado sincronizables.
 - Modelo local separado para hogares, miembros, listas y productos; los registros de compra incluyen `householdId` y `listId` desde el inicio.
 - Migración automática de los datos antiguos de `localStorage` a IndexedDB, manteniendo una copia de respaldo si IndexedDB no está disponible.
 - `vite-plugin-pwa` para instalación y service worker.
 
 ## Backend previsto
 
-Supabase con PostgreSQL, Auth y Realtime. El esquema inicial está definido en `supabase/migrations/202611040001_households_shopping.sql`: hogares, miembros, listas y productos, con aislamiento por hogar mediante Row Level Security (RLS). La migración está preparada, pero todavía no se ha aplicado a un proyecto Supabase. Las claves privilegiadas nunca estarán en el bundle del navegador.
+Supabase con PostgreSQL, Auth y Realtime. Las migraciones versionadas crean hogares, miembros, listas y productos, con aislamiento por hogar mediante RLS. Las funciones privilegiadas viven en el esquema privado `private`; la única RPC pública de creación de hogar es un wrapper SECURITY INVOKER. El cliente usa una clave publishable y nunca incluye claves privilegiadas.
+
+## Autenticación y sincronización
+
+- Acceso por correo y contraseña mediante Supabase Auth; el registro respeta la confirmación de correo configurada en el proyecto.
+- La sesión se restaura desde el almacenamiento seguro gestionado por supabase-js.
+- IndexedDB es la fuente inmediata de lectura/escritura; las operaciones locales no esperan a la red.
+- Tras iniciar sesión, se crea o recupera el hogar del usuario, se obtiene su lista y se fusionan cambios por UUID y marca temporal.
+- Los borrados se representan como tombstones `deleted_at` para propagarse entre dispositivos y evitar resurrecciones simples.
+- Realtime avisa de cambios remotos; al reconectar se vuelve a ejecutar la sincronización.
+- Conflictos simultáneos se resuelven por última marca `updated_at` (last-write-wins). No es un historial de versiones ni una resolución semántica.
 
 ## Dominios funcionales
 
