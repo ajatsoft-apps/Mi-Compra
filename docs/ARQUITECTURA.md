@@ -11,11 +11,13 @@ Aplicación PWA privada para organizar la compra familiar, sincronizar una lista
 - Zustand para estado local de interfaz y flujos cliente.
 - TanStack Query para consultas, caché y sincronización con servicios.
 - IndexedDB (mediante `idb`) como base local para la experiencia offline.
+- Modelo local separado para hogares, miembros, listas y productos; los registros de compra incluyen `householdId` y `listId` desde el inicio.
+- Migración automática de los datos antiguos de `localStorage` a IndexedDB, manteniendo una copia de respaldo si IndexedDB no está disponible.
 - `vite-plugin-pwa` para instalación y service worker.
 
 ## Backend previsto
 
-Supabase con PostgreSQL, Auth y Realtime. Las tablas expuestas deberán protegerse con Row Level Security (RLS). Las claves privilegiadas nunca estarán en el bundle del navegador.
+Supabase con PostgreSQL, Auth y Realtime. El esquema inicial está definido en `supabase/migrations/202611040001_households_shopping.sql`: hogares, miembros, listas y productos, con aislamiento por hogar mediante Row Level Security (RLS). La migración está preparada, pero todavía no se ha aplicado a un proyecto Supabase. Las claves privilegiadas nunca estarán en el bundle del navegador.
 
 ## Dominios funcionales
 
