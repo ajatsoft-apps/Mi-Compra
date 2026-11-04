@@ -11,11 +11,28 @@ Configura estas variables tanto en local como en el proveedor donde publiques la
 
 Crea `.env.local` a partir de `.env.example`. No subas `.env.local` al repositorio. La clave publishable puede estar en el navegador; nunca uses una clave `service_role` o `secret` en Vite, GitHub o el bundle.
 
+## Publicación en GitHub Pages
+
+La PWA se publica en:
+
+`https://ajatsoft-apps.github.io/Mi-Compra/`
+
+El workflow `.github/workflows/deploy-pages.yml` compila y publica automáticamente cada cambio que llegue a `fase-5/backend-supabase`. Para activarlo una primera vez:
+
+1. En GitHub abre **Settings → Pages** del repositorio.
+2. En **Build and deployment → Source**, selecciona **GitHub Actions**.
+3. En **Settings → Secrets and variables → Actions → Variables**, crea:
+   - `VITE_SUPABASE_URL`: URL del proyecto Supabase.
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`: clave publishable (también puede guardarse como Secret).
+4. Comprueba la ejecución en **Actions → Deploy PWA to GitHub Pages**. El despliegue se detiene expresamente si falta alguna de las dos variables.
+
+No se debe añadir una clave `service_role` ni una clave secreta de Supabase. La clave publishable está diseñada para utilizarse en el cliente web.
+
 ## Configuración de Auth en el Dashboard
 
 1. Abre **Authentication → URL Configuration**.
-2. Define **Site URL** como la URL canónica de la PWA que vayas a publicar.
-3. Añade a **Redirect URLs** la URL de producción y los orígenes reales de desarrollo que utilices, por ejemplo `http://localhost:5173/**`. No añadas dominios genéricos que no controles.
+2. Define **Site URL** como `https://ajatsoft-apps.github.io/Mi-Compra/`.
+3. Añade a **Redirect URLs** `https://ajatsoft-apps.github.io/Mi-Compra/**` y los orígenes reales de desarrollo que utilices, por ejemplo `http://localhost:5173/**`. No añadas dominios genéricos que no controles.
 4. En **Authentication → Sign In / Providers**, comprueba que Email está habilitado.
 5. Mantén activada la confirmación de correo para producción. Supabase puede exigir confirmación antes del primer inicio de sesión; la pantalla de Mi Compra informa de ello.
 6. Configura SMTP propio antes de distribuir la aplicación a usuarios reales. El SMTP predeterminado de Supabase tiene límites de entrega y no es un servicio de correo de producción.
