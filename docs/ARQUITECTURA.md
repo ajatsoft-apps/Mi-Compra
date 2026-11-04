@@ -7,6 +7,7 @@ Aplicación PWA privada para organizar la compra familiar, sincronizar una lista
 ## Cliente
 
 - React + TypeScript + Vite.
+- `package-lock.json` versionado; CI utiliza `npm ci` para instalaciones reproducibles.
 - Tailwind CSS para estilos.
 - Zustand para estado local de interfaz y flujos cliente.
 - TanStack Query para consultas, caché y sincronización con servicios.
