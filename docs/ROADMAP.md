@@ -20,10 +20,13 @@ En curso.
 - [x] Añadir productos con cantidad, unidad, categoría y nota.
 - [x] Marcar productos como comprados y retirarlos de la lista.
 - [x] Filtros de pendientes, todos y comprados.
-- [x] Guardado local entre sesiones.
+- [x] Guardado local entre sesiones con IndexedDB y respaldo/migración desde `localStorage`.
+- [x] Modelo de datos local para hogar, miembros, listas y productos.
+- [x] Primera migración SQL de Supabase con políticas RLS para aislar los datos de cada hogar.
 - [x] Interfaz adaptable a móvil, tablet y escritorio.
 - [ ] Pruebas funcionales y revisión de accesibilidad.
-- [ ] Modelo persistente de familia y miembros.
+- [ ] Configurar un proyecto Supabase y aplicar/verificar la migración SQL.
+- [ ] Registro/inicio de sesión e invitación segura de familiares.
 - [ ] Sincronización real entre dispositivos mediante backend.
 
 ## Fase 5 — Backend y sincronización
