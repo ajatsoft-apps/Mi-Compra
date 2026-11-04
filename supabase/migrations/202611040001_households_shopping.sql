@@ -150,7 +150,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -165,7 +165,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -185,7 +185,7 @@ create or replace function public.create_household(household_name text)
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   new_household_id uuid;
@@ -241,12 +241,19 @@ using (public.is_household_member(household_id));
 drop policy if exists household_members_add_owner on public.household_members;
 create policy household_members_add_owner on public.household_members
 for insert to authenticated
-with check (public.is_household_owner(household_id));
+with check (
+  public.is_household_owner(household_id)
+  and role = 'member'
+  and user_id <> (select auth.uid())
+);
 
 drop policy if exists household_members_remove_owner_or_self on public.household_members;
 create policy household_members_remove_owner_or_self on public.household_members
 for delete to authenticated
-using (public.is_household_owner(household_id) or user_id = (select auth.uid()));
+using (
+  public.is_household_owner(household_id)
+  or (user_id = (select auth.uid()) and role <> 'owner')
+);
 
 drop policy if exists shopping_lists_read_member on public.shopping_lists;
 create policy shopping_lists_read_member on public.shopping_lists
