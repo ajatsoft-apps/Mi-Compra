@@ -31,7 +31,7 @@ Cerrada a nivel de código y compilación.
 
 ## Fase 5 — Backend y sincronización
 
-En preparación. Configurar proyecto Supabase, aplicar y validar la migración SQL, autenticación familiar, invitaciones y sincronización Realtime. Requiere la URL y la clave pública anon/publishable del proyecto del usuario. Nunca se solicitará ni almacenará una clave `service_role` en el cliente.
+En curso. Cliente Supabase preparado y documentación de conexión creada. Falta conectar el proyecto, aplicar y validar la migración SQL, definir autenticación familiar, invitaciones y sincronización Realtime. Requiere la URL y la clave pública anon/publishable del proyecto. Nunca se solicitará ni almacenará una clave `service_role` en el cliente.
 
 ## Fase 6 — Catálogo, preferencias y compras
 
