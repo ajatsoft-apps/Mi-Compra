@@ -18,6 +18,7 @@ const categoryIcons: Record<Category, string> = {
 function App() {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [householdName, setHouseholdName] = useState('Mi casa')
+  const [listId, setListId] = useState('shopping-list-default')
   const [isReady, setIsReady] = useState(false)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('1')
@@ -32,6 +33,7 @@ function App() {
       if (!active) return
       setItems(workspace.items)
       setHouseholdName(workspace.household.name)
+      setListId(workspace.list.id)
       setIsReady(true)
     }).catch(() => {
       if (active) setIsReady(true)
@@ -40,8 +42,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isReady) void saveLocalItems(items)
-  }, [items, isReady])
+    if (isReady) void saveLocalItems(listId, items)
+  }, [items, isReady, listId])
 
   const pendingCount = items.filter((item) => !item.completed).length
   const completedCount = items.length - pendingCount
@@ -71,7 +73,7 @@ function App() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       householdId: 'household-local',
-      listId: 'shopping-list-default',
+      listId,
     }
     setItems((current) => [newItem, ...current])
     setName('')
