@@ -2,10 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const base = process.env.GITHUB_ACTIONS === 'true' ? '/Mi-Compra/' : '/'
-
-export default defineConfig({
-  base,
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/Mi-Compra/' : '/',
   plugins: [
     react(),
     VitePWA({
@@ -28,4 +26,4 @@ export default defineConfig({
       },
     }),
   ],
-})
+}))
