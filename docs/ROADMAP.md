@@ -14,24 +14,24 @@ Cerrada. Estructura React/TypeScript/Vite y PWA creadas. La compilación de prod
 
 ## Fase 4 — Primera base funcional
 
-En curso.
+Cerrada a nivel de código y compilación.
 
 - [x] Pantalla inicial de la lista de compra.
 - [x] Añadir productos con cantidad, unidad, categoría y nota.
 - [x] Marcar productos como comprados y retirarlos de la lista.
 - [x] Filtros de pendientes, todos y comprados.
-- [x] Guardado local entre sesiones con IndexedDB y respaldo/migración desde `localStorage`.
-- [x] Modelo de datos local para hogar, miembros, listas y productos.
-- [x] Primera migración SQL de Supabase con políticas RLS para aislar los datos de cada hogar.
-- [x] Interfaz adaptable a móvil, tablet y escritorio.
-- [ ] Pruebas funcionales y revisión de accesibilidad.
-- [ ] Configurar un proyecto Supabase y aplicar/verificar la migración SQL.
-- [ ] Registro/inicio de sesión e invitación segura de familiares.
-- [ ] Sincronización real entre dispositivos mediante backend.
+- [x] Guardado local con IndexedDB y migración/respaldo desde `localStorage`.
+- [x] Modelo local de hogares, miembros, listas y productos.
+- [x] Migración SQL inicial de Supabase con políticas RLS y controles de pertenencia.
+- [x] PWA con icono de instalación para iOS.
+- [x] Compilación de producción y auditoría de dependencias de producción superadas en GitHub Actions.
+- [ ] Pruebas manuales de uso en móviles y tablets (se completarán en la fase de pruebas).
+
+**Límite actual:** la lista todavía se guarda en el dispositivo. La sincronización entre familiares no está activada hasta configurar Supabase y autenticación.
 
 ## Fase 5 — Backend y sincronización
 
-Pendiente: proyecto Supabase, esquema SQL, RLS, autenticación familiar y Realtime. La sincronización entre miembros no se simula en el cliente.
+En preparación. Configurar proyecto Supabase, aplicar y validar la migración SQL, autenticación familiar, invitaciones y sincronización Realtime. Requiere la URL y la clave pública anon/publishable del proyecto del usuario. Nunca se solicitará ni almacenará una clave `service_role` en el cliente.
 
 ## Fase 6 — Catálogo, preferencias y compras
 
