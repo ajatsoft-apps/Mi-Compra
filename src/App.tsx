@@ -148,6 +148,7 @@ function App() {
         }
       }
       const finalItems = [...mergedById.values()]
+      const hasPendingLocalChanges = JSON.stringify(finalItems) !== JSON.stringify(result.items)
       workspaceRef.current = { household: result.household, list: result.list }
       itemsRef.current = finalItems
       lastSyncedSnapshotRef.current = JSON.stringify(result.items)
@@ -155,10 +156,10 @@ function App() {
       setList(result.list)
       setItems(finalItems)
       hasInitialSyncRef.current = true
-      setSyncState('synced')
-      setSyncMessage(finalItems.length === result.items.length
-        ? 'Cambios guardados y sincronizados.'
-        : 'Sincronización actualizada; enviando los últimos cambios locales.')
+      setSyncState(hasPendingLocalChanges ? 'syncing' : 'synced')
+      setSyncMessage(hasPendingLocalChanges
+        ? 'Sincronización actualizada; enviando los últimos cambios locales.'
+        : 'Cambios guardados y sincronizados.')
     } catch (error) {
       setSyncState(navigator.onLine ? 'error' : 'offline')
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.')
@@ -296,7 +297,11 @@ function App() {
       listId: list.id,
       deletedAt: null,
     }
-    setItems((current) => [newItem, ...current])
+    setItems((current) => {
+      const next = [newItem, ...current]
+      itemsRef.current = next
+      return next
+    })
     setName('')
     setQuantity('1')
     setUnit('ud.')
@@ -305,23 +310,35 @@ function App() {
 
   function toggleItem(id: string) {
     const now = Date.now()
-    setItems((current) => current.map((item) => item.id === id
-      ? { ...item, completed: !item.completed, updatedAt: now }
-      : item))
+    setItems((current) => {
+      const next = current.map((item) => item.id === id
+        ? { ...item, completed: !item.completed, updatedAt: now }
+        : item)
+      itemsRef.current = next
+      return next
+    })
   }
 
   function removeItem(id: string) {
     const now = Date.now()
-    setItems((current) => current.map((item) => item.id === id
-      ? { ...item, deletedAt: now, updatedAt: now }
-      : item))
+    setItems((current) => {
+      const next = current.map((item) => item.id === id
+        ? { ...item, deletedAt: now, updatedAt: now }
+        : item)
+      itemsRef.current = next
+      return next
+    })
   }
 
   function clearCompleted() {
     const now = Date.now()
-    setItems((current) => current.map((item) => item.completed && !item.deletedAt
-      ? { ...item, deletedAt: now, updatedAt: now }
-      : item))
+    setItems((current) => {
+      const next = current.map((item) => item.completed && !item.deletedAt
+        ? { ...item, deletedAt: now, updatedAt: now }
+        : item)
+      itemsRef.current = next
+      return next
+    })
     setFilter('Pendientes')
   }
 
