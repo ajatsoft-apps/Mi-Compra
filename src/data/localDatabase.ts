@@ -70,6 +70,7 @@ export async function loadLocalWorkspace(): Promise<{
       }))
       const tx = db.transaction('shoppingItems', 'readwrite')
       await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
+      try { localStorage.removeItem(LEGACY_STORAGE_KEY) } catch { /* La copia ya está en IndexedDB. */ }
     }
   }
 
@@ -99,12 +100,16 @@ function readLegacyItems(): ShoppingItem[] {
 }
 
 export async function saveLocalItems(listId: string, items: ShoppingItem[]): Promise<void> {
-  const db = await database()
-  const tx = db.transaction('shoppingItems', 'readwrite')
-  const existingKeys = await tx.store.index('by-list').getAllKeys(listId)
-  await Promise.all([
-    ...existingKeys.map((key) => tx.store.delete(key)),
-    ...items.map((item) => tx.store.put(item)),
-    tx.done,
-  ])
+  try {
+    const db = await database()
+    const tx = db.transaction('shoppingItems', 'readwrite')
+    const existingKeys = await tx.store.index('by-list').getAllKeys(listId)
+    await Promise.all([
+      ...existingKeys.map((key) => tx.store.delete(key)),
+      ...items.map((item) => tx.store.put(item)),
+      tx.done,
+    ])
+  } catch {
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(items))
+  }
 }
