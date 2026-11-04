@@ -2,15 +2,25 @@ import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { Household, ShoppingItem, ShoppingList } from '../domain/shopping'
 
+type WorkspaceMetadata = {
+  id: 'active'
+  householdId: string
+  householdName: string
+  listId: string
+  listName: string
+  remote: boolean
+}
+
 type MiCompraDatabase = DBSchema & {
   households: { key: string; value: Household }
   householdMembers: { key: string; value: { id: string; householdId: string; displayName: string; role: 'owner' | 'member'; createdAt: number }; indexes: { 'by-household': string } }
   shoppingLists: { key: string; value: ShoppingList; indexes: { 'by-household': string } }
   shoppingItems: { key: string; value: ShoppingItem; indexes: { 'by-list': string; 'by-household': string } }
+  workspaceMeta: { key: 'active'; value: WorkspaceMetadata }
 }
 
 const DATABASE_NAME = 'mi-compra-local'
-const DATABASE_VERSION = 1
+const DATABASE_VERSION = 2
 const DEFAULT_HOUSEHOLD_ID = 'household-local'
 const DEFAULT_LIST_ID = 'shopping-list-default'
 const LEGACY_STORAGE_KEY = 'mi-compra.shopping-items.v1'
@@ -34,6 +44,9 @@ function database() {
         store.createIndex('by-list', 'listId')
         store.createIndex('by-household', 'householdId')
       }
+      if (!db.objectStoreNames.contains('workspaceMeta')) {
+        db.createObjectStore('workspaceMeta', { keyPath: 'id' })
+      }
     },
   })
   return databasePromise
@@ -43,24 +56,38 @@ export async function loadLocalWorkspace(): Promise<{
   household: Household
   list: ShoppingList
   items: ShoppingItem[]
+  remote: boolean
 }> {
   try {
     const db = await database()
     const now = Date.now()
-    let household = await db.get('households', DEFAULT_HOUSEHOLD_ID)
+    let metadata = await db.get('workspaceMeta', 'active')
+    if (!metadata) {
+      metadata = {
+        id: 'active',
+        householdId: DEFAULT_HOUSEHOLD_ID,
+        householdName: 'Mi casa',
+        listId: DEFAULT_LIST_ID,
+        listName: 'Lista de casa',
+        remote: false,
+      }
+      await db.put('workspaceMeta', metadata)
+    }
+
+    let household = await db.get('households', metadata.householdId)
     if (!household) {
-      household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
+      household = { id: metadata.householdId, name: metadata.householdName, createdAt: now }
       await db.put('households', household)
     }
 
-    let list = await db.get('shoppingLists', DEFAULT_LIST_ID)
+    let list = await db.get('shoppingLists', metadata.listId)
     if (!list) {
-      list = { id: DEFAULT_LIST_ID, householdId: household.id, name: 'Lista de casa', createdAt: now }
+      list = { id: metadata.listId, householdId: household.id, name: metadata.listName, createdAt: now }
       await db.put('shoppingLists', list)
     }
 
     let items = await db.getAllFromIndex('shoppingItems', 'by-list', list.id)
-    if (items.length === 0) {
+    if (items.length === 0 && !metadata.remote) {
       const legacy = readLegacyItems()
       if (legacy.length > 0) {
         items = legacy.map((item) => ({
@@ -75,17 +102,22 @@ export async function loadLocalWorkspace(): Promise<{
       }
     }
 
-    return { household, list, items }
+    return { household, list, items, remote: metadata.remote }
   } catch {
     const now = Date.now()
     const household: Household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
     const list: ShoppingList = { id: DEFAULT_LIST_ID, householdId: household.id, name: 'Lista de casa', createdAt: now }
-    return { household, list, items: readLegacyItems().map((item) => ({
-      ...item,
-      householdId: household.id,
-      listId: list.id,
-      updatedAt: item.updatedAt ?? item.createdAt,
-    })) }
+    return {
+      household,
+      list,
+      items: readLegacyItems().map((item) => ({
+        ...item,
+        householdId: household.id,
+        listId: list.id,
+        updatedAt: item.updatedAt ?? item.createdAt,
+      })),
+      remote: false,
+    }
   }
 }
 
@@ -109,6 +141,28 @@ function readLegacyItems(): ShoppingItem[] {
   } catch {
     return []
   }
+}
+
+export async function saveActiveWorkspace(
+  household: Household,
+  list: ShoppingList,
+  remote: boolean,
+): Promise<void> {
+  const db = await database()
+  const tx = db.transaction(['households', 'shoppingLists', 'workspaceMeta'], 'readwrite')
+  await Promise.all([
+    tx.objectStore('households').put(household),
+    tx.objectStore('shoppingLists').put(list),
+    tx.objectStore('workspaceMeta').put({
+      id: 'active',
+      householdId: household.id,
+      householdName: household.name,
+      listId: list.id,
+      listName: list.name,
+      remote,
+    }),
+    tx.done,
+  ])
 }
 
 export async function saveLocalItems(listId: string, items: ShoppingItem[]): Promise<void> {
