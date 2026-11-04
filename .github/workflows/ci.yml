@@ -12,7 +12,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -25,7 +25,18 @@ jobs:
         with:
           node-version: 20
       - name: Instalar dependencias
-        run: npm install
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Guardar lockfile reproducible en rama de desarrollo
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/fase-4/')
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: guardar lockfile de npm'
+            git push
+          fi
       - name: Revisar vulnerabilidades de dependencias
         run: |
           npm audit --json > npm-audit.json || true
