@@ -4,7 +4,7 @@ Asistente inteligente de compra familiar.
 
 ## Estado
 
-Proyecto en fase de configuración inicial. La arquitectura funcional y técnica está definida; la implementación se realizará por fases y con validaciones antes de integrar cambios en `main`.
+El frontend PWA ya dispone de lista local en IndexedDB, registro e inicio de sesión por correo, creación automática del primer hogar y sincronización offline-first con Supabase Auth, PostgreSQL y Realtime. Esta integración está en la rama `fase-5/backend-supabase`; todavía requiere configurar las URLs de Auth y las variables del entorno de despliegue, y validar el uso real con dos dispositivos antes de integrarla en `main`.
 
 ## Objetivo
 
