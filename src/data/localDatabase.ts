@@ -98,9 +98,13 @@ function readLegacyItems(): ShoppingItem[] {
   }
 }
 
-export async function saveLocalItems(items: ShoppingItem[]): Promise<void> {
+export async function saveLocalItems(listId: string, items: ShoppingItem[]): Promise<void> {
   const db = await database()
   const tx = db.transaction('shoppingItems', 'readwrite')
-  await tx.store.clear()
-  await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
+  const existingKeys = await tx.store.index('by-list').getAllKeys(listId)
+  await Promise.all([
+    ...existingKeys.map((key) => tx.store.delete(key)),
+    ...items.map((item) => tx.store.put(item)),
+    tx.done,
+  ])
 }
