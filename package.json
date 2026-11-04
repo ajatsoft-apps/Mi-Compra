@@ -10,7 +10,7 @@
     "typecheck": "tsc -b --pretty"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
+    "@supabase/supabase-js": "2.109.0",
     "@tanstack/react-query": "^5.0.0",
     "idb": "^8.0.0",
     "react": "^19.0.0",
