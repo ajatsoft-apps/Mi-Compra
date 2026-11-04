@@ -44,37 +44,49 @@ export async function loadLocalWorkspace(): Promise<{
   list: ShoppingList
   items: ShoppingItem[]
 }> {
-  const db = await database()
-  const now = Date.now()
-  let household = await db.get('households', DEFAULT_HOUSEHOLD_ID)
-  if (!household) {
-    household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
-    await db.put('households', household)
-  }
-
-  let list = await db.get('shoppingLists', DEFAULT_LIST_ID)
-  if (!list) {
-    list = { id: DEFAULT_LIST_ID, householdId: household.id, name: 'Lista de casa', createdAt: now }
-    await db.put('shoppingLists', list)
-  }
-
-  let items = await db.getAllFromIndex('shoppingItems', 'by-list', list.id)
-  if (items.length === 0) {
-    const legacy = readLegacyItems()
-    if (legacy.length > 0) {
-      items = legacy.map((item) => ({
-        ...item,
-        householdId: household.id,
-        listId: list.id,
-        updatedAt: item.updatedAt ?? item.createdAt,
-      }))
-      const tx = db.transaction('shoppingItems', 'readwrite')
-      await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
-      try { localStorage.removeItem(LEGACY_STORAGE_KEY) } catch { /* La copia ya está en IndexedDB. */ }
+  try {
+    const db = await database()
+    const now = Date.now()
+    let household = await db.get('households', DEFAULT_HOUSEHOLD_ID)
+    if (!household) {
+      household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
+      await db.put('households', household)
     }
-  }
 
-  return { household, list, items }
+    let list = await db.get('shoppingLists', DEFAULT_LIST_ID)
+    if (!list) {
+      list = { id: DEFAULT_LIST_ID, householdId: household.id, name: 'Lista de casa', createdAt: now }
+      await db.put('shoppingLists', list)
+    }
+
+    let items = await db.getAllFromIndex('shoppingItems', 'by-list', list.id)
+    if (items.length === 0) {
+      const legacy = readLegacyItems()
+      if (legacy.length > 0) {
+        items = legacy.map((item) => ({
+          ...item,
+          householdId: household.id,
+          listId: list.id,
+          updatedAt: item.updatedAt ?? item.createdAt,
+        }))
+        const tx = db.transaction('shoppingItems', 'readwrite')
+        await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
+        try { localStorage.removeItem(LEGACY_STORAGE_KEY) } catch { /* La copia ya está en IndexedDB. */ }
+      }
+    }
+
+    return { household, list, items }
+  } catch {
+    const now = Date.now()
+    const household: Household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
+    const list: ShoppingList = { id: DEFAULT_LIST_ID, householdId: household.id, name: 'Lista de casa', createdAt: now }
+    return { household, list, items: readLegacyItems().map((item) => ({
+      ...item,
+      householdId: household.id,
+      listId: list.id,
+      updatedAt: item.updatedAt ?? item.createdAt,
+    })) }
+  }
 }
 
 function readLegacyItems(): ShoppingItem[] {
