@@ -51,6 +51,43 @@ create index if not exists shopping_lists_household_idx on public.shopping_lists
 create index if not exists shopping_items_list_created_idx on public.shopping_list_items(list_id, created_at desc);
 create index if not exists shopping_items_household_idx on public.shopping_list_items(household_id);
 
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  new.updated_at = now();
+  return new;
+end;
+$;
+
+create or replace function public.touch_shopping_item()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  new.updated_at = now();
+  if new.is_completed and not old.is_completed then
+    new.completed_at = now();
+  elsif not new.is_completed then
+    new.completed_at = null;
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists shopping_lists_touch_updated_at on public.shopping_lists;
+create trigger shopping_lists_touch_updated_at
+before update on public.shopping_lists
+for each row execute function public.touch_updated_at();
+
+drop trigger if exists shopping_items_touch_updated_at on public.shopping_list_items;
+create trigger shopping_items_touch_updated_at
+before update on public.shopping_list_items
+for each row execute function public.touch_shopping_item();
+
 create or replace function public.is_household_member(target_household_id uuid)
 returns boolean
 language sql
