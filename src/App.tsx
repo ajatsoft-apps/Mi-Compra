@@ -128,21 +128,37 @@ function App() {
     setSyncMessage('')
     try {
       const currentWorkspace = workspaceRef.current
+      const startingItems = itemsRef.current
       const result = await synchronizeWorkspace(
         session.user,
         currentWorkspace.household,
         currentWorkspace.list,
-        itemsRef.current,
+        startingItems,
       )
+      const latestLocalItems = itemsRef.current
+      const mergedById = new Map(result.items.map((item) => [item.id, item]))
+      for (const localItem of latestLocalItems) {
+        const remoteItem = mergedById.get(localItem.id)
+        if (!remoteItem || localItem.updatedAt > remoteItem.updatedAt) {
+          mergedById.set(localItem.id, {
+            ...localItem,
+            householdId: result.household.id,
+            listId: result.list.id,
+          })
+        }
+      }
+      const finalItems = [...mergedById.values()]
       workspaceRef.current = { household: result.household, list: result.list }
-      itemsRef.current = result.items
+      itemsRef.current = finalItems
       lastSyncedSnapshotRef.current = JSON.stringify(result.items)
       setHousehold(result.household)
       setList(result.list)
-      setItems(result.items)
+      setItems(finalItems)
       hasInitialSyncRef.current = true
       setSyncState('synced')
-      setSyncMessage('Cambios guardados y sincronizados.')
+      setSyncMessage(finalItems.length === result.items.length
+        ? 'Cambios guardados y sincronizados.'
+        : 'Sincronización actualizada; enviando los últimos cambios locales.')
     } catch (error) {
       setSyncState(navigator.onLine ? 'error' : 'offline')
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.')
