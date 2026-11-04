@@ -24,6 +24,20 @@ const DATABASE_VERSION = 2
 const DEFAULT_HOUSEHOLD_ID = 'household-local'
 const DEFAULT_LIST_ID = 'shopping-list-default'
 const LEGACY_STORAGE_KEY = 'mi-compra.shopping-items.v1'
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeItemIds(items: ShoppingItem[]): { items: ShoppingItem[]; changed: boolean } {
+  let changed = false
+  const normalized = items.map((item) => {
+    if (UUID_PATTERN.test(item.id)) return item
+    if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+      throw new Error('Este navegador no permite generar identificadores seguros.')
+    }
+    changed = true
+    return { ...item, id: crypto.randomUUID() }
+  })
+  return { items: normalized, changed }
+}
 
 let databasePromise: Promise<IDBPDatabase<MiCompraDatabase>> | undefined
 
@@ -102,7 +116,17 @@ export async function loadLocalWorkspace(): Promise<{
       }
     }
 
-    return { household, list, items, remote: metadata.remote }
+    const normalized = normalizeItemIds(items)
+    if (normalized.changed) {
+      const tx = db.transaction('shoppingItems', 'readwrite')
+      await Promise.all([
+        ...items.map((item) => tx.store.delete(item.id)),
+        ...normalized.items.map((item) => tx.store.put(item)),
+        tx.done,
+      ])
+    }
+
+    return { household, list, items: normalized.items, remote: metadata.remote }
   } catch {
     const now = Date.now()
     const household: Household = { id: DEFAULT_HOUSEHOLD_ID, name: 'Mi casa', createdAt: now }
@@ -110,12 +134,12 @@ export async function loadLocalWorkspace(): Promise<{
     return {
       household,
       list,
-      items: readLegacyItems().map((item) => ({
+      items: normalizeItemIds(readLegacyItems().map((item) => ({
         ...item,
         householdId: household.id,
         listId: list.id,
         updatedAt: item.updatedAt ?? item.createdAt,
-      })),
+      }))).items,
       remote: false,
     }
   }
