@@ -27,8 +27,6 @@ jobs:
       - name: Instalar dependencias
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - name: Aplicar correcciones de seguridad compatibles
-        run: npm audit fix
       - name: Guardar lockfile reproducible en rama de desarrollo
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/fase-4/')
         run: |
