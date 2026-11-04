@@ -170,7 +170,8 @@ function App() {
 
   useEffect(() => {
     if (!session || !isSupabaseConfigured || !supabase || !hasInitialSyncRef.current) return
-    const channel = supabase
+    const client = supabase
+    const channel = client
       .channel(`shopping-list-${list.id}`)
       .on('postgres_changes', {
         event: '*',
@@ -197,7 +198,7 @@ function App() {
         }
       })
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => { void client.removeChannel(channel) }
   }, [session?.user.id, list.id])
 
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
