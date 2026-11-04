@@ -7,6 +7,7 @@ on:
       - main
       - 'fase-3/**'
       - 'fase-4/**'
+      - 'fase-5/**'
   pull_request:
     branches:
       - main
