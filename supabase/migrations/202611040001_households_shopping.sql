@@ -212,6 +212,16 @@ $$;
 revoke all on function public.create_household(text) from public;
 grant execute on function public.create_household(text) to authenticated;
 
+revoke all on table public.households from anon;
+revoke all on table public.household_members from anon;
+revoke all on table public.shopping_lists from anon;
+revoke all on table public.shopping_list_items from anon;
+
+grant select, insert, update, delete on table public.households to authenticated;
+grant select, insert, update, delete on table public.household_members to authenticated;
+grant select, insert, update, delete on table public.shopping_lists to authenticated;
+grant select, insert, update, delete on table public.shopping_list_items to authenticated;
+
 alter table public.households enable row level security;
 alter table public.household_members enable row level security;
 alter table public.shopping_lists enable row level security;
