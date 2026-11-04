@@ -62,6 +62,63 @@ begin
 end;
 $;
 
+create or replace function public.protect_household_owner()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.created_by is distinct from old.created_by then
+    raise exception 'Household creator cannot be changed';
+  end if;
+  return new;
+end;
+$;
+
+create or replace function public.protect_shopping_list_identity()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.household_id is distinct from old.household_id
+     or new.created_by is distinct from old.created_by then
+    raise exception 'Shopping list ownership cannot be changed';
+  end if;
+  return new;
+end;
+$;
+
+create or replace function public.protect_shopping_item_identity()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.household_id is distinct from old.household_id
+     or new.list_id is distinct from old.list_id
+     or new.created_by is distinct from old.created_by then
+    raise exception 'Shopping item ownership cannot be changed';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists households_protect_owner on public.households;
+create trigger households_protect_owner
+before update on public.households
+for each row execute function public.protect_household_owner();
+
+drop trigger if exists shopping_lists_protect_identity on public.shopping_lists;
+create trigger shopping_lists_protect_identity
+before update on public.shopping_lists
+for each row execute function public.protect_shopping_list_identity();
+
+drop trigger if exists shopping_items_protect_identity on public.shopping_list_items;
+create trigger shopping_items_protect_identity
+before update on public.shopping_list_items
+for each row execute function public.protect_shopping_item_identity();
+
 create or replace function public.touch_shopping_item()
 returns trigger
 language plpgsql
