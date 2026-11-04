@@ -37,7 +37,7 @@ No se debe añadir una clave `service_role` ni una clave secreta de Supabase. La
 5. Mantén activada la confirmación de correo para producción. Supabase puede exigir confirmación antes del primer inicio de sesión; la pantalla de Mi Compra informa de ello.
 6. Configura SMTP propio antes de distribuir la aplicación a usuarios reales. El SMTP predeterminado de Supabase tiene límites de entrega y no es un servicio de correo de producción.
 
-El registro usa `emailRedirectTo: window.location.origin`; por eso el origen exacto desde el que se registra debe estar incluido en Redirect URLs. La aplicación no habilita proveedores sociales ni permite invitaciones por correo en esta fase.
+El registro redirige a la URL base de la aplicación (`import.meta.env.BASE_URL`), incluyendo `/Mi-Compra/` en GitHub Pages. Esa URL completa debe estar incluida en Redirect URLs para que la confirmación vuelva a la PWA y no a la raíz del dominio. La aplicación no habilita proveedores sociales ni permite invitaciones por correo en esta fase.
 
 ## Flujo implementado
 
