@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 
 type Category = 'Fruta y verdura' | 'Lácteos' | 'Despensa' | 'Bebidas' | 'Hogar' | 'Otros'
 type Filter = 'Pendientes' | 'Todo' | 'Comprados'
