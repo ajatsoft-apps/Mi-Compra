@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from './data/supabaseClient'
 import type { Category } from './domain/shopping'
+import ProductAutocomplete, { type ProductSuggestion } from './ProductAutocomplete'
 
 export type CatalogProduct = {
   id: string
@@ -57,6 +58,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [activeTab, setActiveTab] = useState<'catalog' | 'history'>('catalog')
   const [search, setSearch] = useState('')
+  const [catalogSearch, setCatalogSearch] = useState('')
   const [form, setForm] = useState(blankForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState('')
@@ -117,6 +119,56 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
   }, [householdId, online, refresh])
 
   const filteredProducts = useMemo(() => products.filter((p) => [p.name, p.brand, p.barcode ?? ''].join(' ').toLocaleLowerCase().includes(search.toLocaleLowerCase())), [products, search])
+
+  async function saveSuggestedProduct(product: ProductSuggestion) {
+    if (!supabase || !online) return
+    setBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      const db = supabase
+      const { data: existing, error: lookupError } = await db
+        .from('household_products')
+        .select('id')
+        .eq('household_id', householdId)
+        .ilike('name', product.name)
+        .eq('brand', product.brand)
+        .is('archived_at', null)
+        .limit(1)
+        .maybeSingle()
+      if (lookupError) throw lookupError
+      if (existing) {
+        setMessage('«' + product.name + '» ya estaba guardado en el catálogo.')
+        setSearch(product.name)
+        return
+      }
+      const formatMatch = product.format.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(.*)$/)
+      const formatQuantity = formatMatch ? Number(formatMatch[1].replace(',', '.')) : null
+      const formatUnit = formatMatch?.[2]?.trim() || product.unit || 'ud.'
+      const { error: insertError } = await db.from('household_products').insert({
+        household_id: householdId,
+        created_by: userId,
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        format_quantity: formatQuantity && Number.isFinite(formatQuantity) ? formatQuantity : null,
+        format_unit: formatUnit,
+        notes: 'Añadido desde el buscador de ' + (product.supermarket === 'lidl' ? 'Lidl' : 'Mercadona'),
+      })
+      if (insertError) {
+        if (insertError.code !== '23505') throw insertError
+        setMessage('«' + product.name + '» ya estaba guardado en el catálogo.')
+      } else {
+        setMessage('«' + product.name + '» guardado en el catálogo. No se ha añadido a la cesta.')
+      }
+      setCatalogSearch('')
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo guardar el producto en el catálogo.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   function resetForm() { setForm(blankForm); setEditingId(null) }
 
@@ -247,8 +299,11 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                 {editingId && <button className="secondary-action" type="button" onClick={resetForm}>Cancelar edición</button>}
               </form>
             </section>
-            <section className="account-page-card">
-              <p className="field-label">CATÁLOGO DEL HOGAR</p>
+            <section className="account-page-card catalog-products-card">
+              <p className="field-label">AÑADIR PRODUCTOS AL CATÁLOGO</p>
+              <p className="auth-note">Busca en Lidl y Mercadona. Al seleccionar un producto se guarda aquí, sin añadirlo a la cesta ni guardar su precio.</p>
+              <ProductAutocomplete value={catalogSearch} disabled={!online || busy} onChange={setCatalogSearch} onSelect={(product) => void saveSuggestedProduct(product)} />
+              <div className="catalog-list-search"><p className="field-label">CATÁLOGO DEL HOGAR</p>
               <input className="text-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar nombre, marca o código…" aria-label="Buscar productos del catálogo" />
               {busy && products.length === 0 ? <p className="management-empty">Cargando catálogo…</p> : filteredProducts.length === 0 ? <p className="management-empty">Todavía no hay productos. Añade los habituales de casa.</p> : (
                 <ul className="management-list">
@@ -256,16 +311,17 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                     <li className="management-row catalog-product-row" key={product.id}>
                       <div className="management-person"><strong>{product.name}</strong><span>{[product.brand, product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '', product.barcode ?? ''].filter(Boolean).join(' · ') || product.category}</span></div>
                       <div className="management-actions catalog-actions">
-                        <button type="button" className="management-link" onClick={() => onAddToList({ ...product, preferredBrand: preferences[product.id]?.preferred_brand, preferredFormat: preferences[product.id]?.preferred_format })}>Añadir</button>
-                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>Preferencias</button>
-                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => editProduct(product)}>Editar</button>
-                        <button type="button" className="management-remove" disabled={!online || busy} onClick={() => void archiveProduct(product)}>Archivar</button>
-                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setPurchaseTarget(product); setPurchaseQuantity('1') }}>Compra</button>
+                        <button type="button" className="catalog-action-add" title="Añadir a la cesta" aria-label={'Añadir ' + product.name + ' a la cesta'} onClick={() => onAddToList({ ...product, preferredBrand: preferences[product.id]?.preferred_brand, preferredFormat: preferences[product.id]?.preferred_format })}>＋ Cesta</button>
+                        <button type="button" className="catalog-action-preferences" title="Preferencias" onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>⚙ Prefer.</button>
+                        <button type="button" className="catalog-action-edit" title="Editar producto" disabled={!online || busy} onClick={() => editProduct(product)}>✎ Editar</button>
+                        <button type="button" className="catalog-action-purchase" title="Registrar compra" disabled={!online || busy} onClick={() => { setPurchaseTarget(product); setPurchaseQuantity('1') }}>✓ Compra</button>
+                        <button type="button" className="catalog-action-archive" title="Archivar producto" disabled={!online || busy} onClick={() => void archiveProduct(product)}>⌑ Archivar</button>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
+              </div>
             </section>
           </div>
           {selectedProduct && (
