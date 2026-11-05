@@ -36,6 +36,8 @@ class ScriptParser(HTMLParser):
         super().__init__()
         self.scripts: list[dict[str, Any]] = []
         self.product_attributes: list[dict[str, Any]] = []
+        self.links: list[dict[str, Any]] = []
+        self.current_link: dict[str, Any] | None = None
         self.current: dict[str, Any] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -54,6 +56,14 @@ class ScriptParser(HTMLParser):
                     "snippet": decoded[max(0, position - 180):position + 900] if position >= 0 else decoded[:900],
                     "value": value,
                 })
+        if tag.lower() == "a":
+            attributes = dict(attrs)
+            self.current_link = {
+                "href": attributes.get("href"),
+                "title": attributes.get("title"),
+                "aria_label": attributes.get("aria-label"),
+                "text": "",
+            }
         if tag.lower() == "script":
             attributes = dict(attrs)
             self.current = {
@@ -66,11 +76,16 @@ class ScriptParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self.current is not None:
             self.current["text"] += data
+        if self.current_link is not None:
+            self.current_link["text"] += data
 
     def handle_endtag(self, tag: str) -> None:
         if tag.lower() == "script" and self.current is not None:
             self.scripts.append(self.current)
             self.current = None
+        if tag.lower() == "a" and self.current_link is not None:
+            self.links.append(self.current_link)
+            self.current_link = None
 
 
 def fetch_page(name: str, url: str) -> dict[str, Any]:
@@ -194,6 +209,15 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
         "page_title": title,
         "script_count": len(scripts),
         "scripts": script_summaries,
+        "category_links": [
+            {
+                "href": link.get("href"),
+                "title": link.get("title"),
+                "text": re.sub(r"\\s+", " ", link.get("text", "")).strip(),
+            }
+            for link in parser.links
+            if "/c/" in str(link.get("href") or "")
+        ][:150],
         "product_attribute_count": len(parser.product_attributes),
         "parsed_product_count": len(parsed_products),
         "unique_product_count": len({item["product_id"] for item in parsed_products}),
