@@ -5,8 +5,8 @@
 El autocompletado Lidl combina tres fuentes públicas distintas:
 
 1. **Buscador de la tienda online** (/q/api/search, versión 2.0): devuelve el catálogo online, precio, marca, imagen, categoría y disponibilidad. La exploración completa recuperó 6.489 productos únicos. Este catálogo contiene mucho bazar y no equivale al surtido completo de alimentación de una tienda física; sus precios se etiquetan como online.
-2. **Páginas públicas de Lidl España**: ofertas semanales, próxima semana, fin de semana y categorías de fruta/verdura, pescado, carne y panadería. Sus atributos data-grid-data incluyen nombre, códigos internos, marca, categoría, imagen, formato, precios regionales, precios Lidl Plus y vigencias.
-3. **Lidl Plus por tienda**: conserva las ofertas específicas de las tiendas configuradas. El código nat de las páginas públicas se relaciona con product_ids de Lidl Plus, de modo que se puede enriquecer una oferta sin aproximar por nombre.
+2. **Páginas públicas de Lidl España**: ofertas semanales, próxima semana, fin de semana, fruta/verdura, pescado, carne, panadería, «Tus otras marcas de siempre» (actual y próxima semana) y «Deluxe». Sus atributos data-grid-data incluyen nombre, códigos internos, marca, categoría, imagen, formato, precios regionales, precios Lidl Plus y vigencias. El importador sigue los enlaces de paginación.
+3. **Búsqueda dirigida de alimentación**: además del catálogo sin consulta, se buscan términos habituales (leche, huevos, queso, yogur, carne, pollo, pescado, pan, arroz, pasta, aceite, fruta, verdura, café, etc.) y solo se aceptan resultados cuya categoría sea de alimentación. Esto permite recuperar promociones alimentarias que no aparecen en el listado completo.\n4. **Lidl Plus por tienda**: conserva las ofertas específicas de las tiendas configuradas. El código nat de las páginas públicas se relaciona con product_ids de Lidl Plus, de modo que se puede enriquecer una oferta sin aproximar por nombre.
 
 ## Importación
 
@@ -14,7 +14,7 @@ scripts/import_lidl_catalog.py descarga el catálogo online con dos pasadas (pri
 
 La importación crea un snapshot en estado staging, inserta los registros por lotes y solo lo publica mediante publish_lidl_catalog_snapshot cuando el número de filas coincide y se supera el mínimo de 6.000 productos. Si una descarga queda incompleta, el snapshot publicado anterior sigue siendo el que utiliza la PWA.
 
-El precio de tienda se prioriza sobre el precio online. Si existe precio Lidl Plus se muestra como tal; los precios futuros no se ofrecen hasta que comienza su vigencia. Los productos a granel se guardan con unidad kg; los envasados con ud.
+El precio de tienda se prioriza sobre el precio online. Si existe precio Lidl Plus se muestra como tal; los precios futuros no se ofrecen hasta que comienza su vigencia. Los productos alimentarios sin precio publicado también pueden aparecer, claramente etiquetados como «Precio no publicado»; no se inventan importes. Los productos a granel se guardan con unidad kg; los envasados con ud.
 
 ## Región y programación
 
