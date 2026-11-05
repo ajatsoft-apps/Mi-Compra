@@ -245,9 +245,7 @@ as $$
   lidl_offer_rows as (
     select
       o.offer_id, o.title, nullif(nullif(o.brand, ''), '--') as brand, o.category, o.product_ids,
-      (select value from jsonb_array_elements_text(
-        case when jsonb_typeof(o.product_ids) = 'array' then o.product_ids else '[]'::jsonb end
-      ) as ids(value) limit 1) as article_code,
+      (select value from unnest(o.product_ids) as ids(value) limit 1) as article_code,
       o.price_box, o.image_url, s.store_name, s.captured_at,
       case when jsonb_typeof(o.price_box -> 'largePartNumeric') = 'number'
         and o.price_box ->> 'priceSymbol' in ('€', '€/kg', '€/L', '€/l')
