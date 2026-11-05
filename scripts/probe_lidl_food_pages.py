@@ -113,12 +113,14 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
         regions_prices = product.get("regionsPrices") or {}
         region_samples = []
         for region_id, region_meta in list(regions_v2.items())[:4]:
-            region_price = regions_prices.get(str(region_id)) or {}
+            price_region_id = region_meta.get("regionPriceId") if isinstance(region_meta, dict) else region_id
+            region_price = regions_prices.get(str(price_region_id)) or {}
             plus = region_price.get("currentLidlPlusPrice") or {}
             price_data = plus.get("price") or region_price.get("price") or {}
             region_samples.append({
                 "region_id": str(region_id),
                 "region_name": region_meta.get("regionName") if isinstance(region_meta, dict) else None,
+                "region_price_id": str(price_region_id),
                 "region_status": region_meta.get("status") if isinstance(region_meta, dict) else None,
                 "price_keys": sorted(region_price.keys()) if isinstance(region_price, dict) else [],
                 "price": price_data.get("price") if isinstance(price_data, dict) else None,
@@ -140,6 +142,10 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
             "store": product.get("store"),
             "store_end_date": product.get("storeEndDate"),
             "regions_with_prices": len(regions_prices),
+            "region_map": [
+                {"region_id": str(region_id), "region_name": meta.get("regionName"), "region_price_id": str(meta.get("regionPriceId"))}
+                for region_id, meta in regions_v2.items() if isinstance(meta, dict)
+            ],
             "region_samples": region_samples,
             "top_level_keys": sorted(product.keys()),
         })
