@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: lidl-catalog-import
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   import:
