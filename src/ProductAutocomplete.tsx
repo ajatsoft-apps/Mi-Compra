@@ -88,7 +88,7 @@ function formatLidlPrice(value: Record<string, unknown> | null): string {
     ? 'Antes ' + (symbol === '€' ? euro.format(previous) : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(previous) + ' ' + symbol)
     : ''
   const discount = String(value.discountMessage ?? '').trim()
-  return [previousText, currentText, discount].filter(Boolean).join('\\n')
+  return [previousText, currentText, discount].filter(Boolean).join('\n')
 }
 
 export default function ProductAutocomplete({ value, disabled = false, onChange, onSelect }: Props) {
