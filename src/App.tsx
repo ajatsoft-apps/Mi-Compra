@@ -744,7 +744,7 @@ function App() {
           </a>
           <div className="topbar-actions">
             <button className="account-button" type="button" onClick={() => { setMarketPricesOpen(true); setLidlOffersOpen(false); setOptimizerOpen(false); setCatalogScreenOpen(false); setAccountScreenOpen(false) }}>💶 Precios</button>
-            {session && hasRemoteHousehold && !syncDisconnected && <button className="account-button" type="button" onClick={() => { setLidlOffersOpen(true); setMarketPricesOpen(false); setOptimizerOpen(false); setCatalogScreenOpen(false); setAccountScreenOpen(false) }}>🏷️ Lidl</button>}
+            <button className="account-button" type="button" onClick={() => { setLidlOffersOpen(true); setMarketPricesOpen(false); setOptimizerOpen(false); setCatalogScreenOpen(false); setAccountScreenOpen(false) }}>🏷️ Lidl</button>
             <button className="account-button" type="button" onClick={() => { setOptimizerOpen(true); setLidlOffersOpen(false); setMarketPricesOpen(false); setCatalogScreenOpen(false); setAccountScreenOpen(false) }}>🧮 Mi cesta</button>
             {session && hasRemoteHousehold && !syncDisconnected && <button className="account-button" type="button" onClick={() => { setCatalogScreenOpen(true); setLidlOffersOpen(false); setMarketPricesOpen(false); setOptimizerOpen(false); setAccountScreenOpen(false) }}>📦 Catálogo</button>}
             <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => { setLidlOffersOpen(false); setMarketPricesOpen(false); setOptimizerOpen(false); setCatalogScreenOpen(false); setAccountScreenOpen((open) => !open) }}>
@@ -760,11 +760,7 @@ function App() {
         ) : marketPricesOpen ? (
           <MarketPrices onBack={() => setMarketPricesOpen(false)} />
         ) : lidlOffersOpen ? (
-          session && hasRemoteHousehold && !syncDisconnected ? (
-            <LidlOffers householdId={household.id} online={isOnline} onBack={() => setLidlOffersOpen(false)} />
-          ) : (
-            <section className="account-page"><button className="back-to-list" type="button" onClick={() => setLidlOffersOpen(false)}>← Volver a la lista</button><h1>Ofertas Lidl</h1><p className="auth-note">Para consultar las ofertas, inicia sesión y conecta este dispositivo a un hogar.</p></section>
-          )
+          <LidlOffers online={isOnline} onBack={() => setLidlOffersOpen(false)} />
         ) : catalogScreenOpen ? (
           session && hasRemoteHousehold && !syncDisconnected ? (
             <ProductCatalog householdId={household.id} userId={session.user.id} online={isOnline} onBack={() => setCatalogScreenOpen(false)} onAddToList={addCatalogProductToList} />
