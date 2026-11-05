@@ -1,0 +1,41 @@
+name: Import Lidl weekly offers
+
+on:
+  workflow_dispatch:
+    inputs:
+      store_keys:
+        description: Lidl Spain store keys, comma-separated
+        required: true
+        default: "ES0375,ES0380,ES0385"
+  schedule:
+    - cron: "0 7 * * 1,5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: import-lidl-weekly-offers
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate importer and unit tests
+        run: |
+          python -m py_compile scripts/import_lidl_weekly_offers.py tests/test_import_lidl_weekly_offers.py
+          python -m unittest discover -s tests -p 'test_import_lidl_weekly_offers.py' -v
+      - name: Import household-scoped Lidl offers
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIDL_HOUSEHOLD_ID: ${{ secrets.LIDL_HOUSEHOLD_ID }}
+          LIDL_STORE_KEYS: ${{ github.event.inputs.store_keys || 'ES0375,ES0380,ES0385' }}
+        run: python scripts/import_lidl_weekly_offers.py
