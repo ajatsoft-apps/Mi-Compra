@@ -30,6 +30,19 @@ function createItemId(): string {
   throw new Error('Actualiza el navegador para poder crear identificadores seguros.')
 }
 
+function normalizeItemValue(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es')
+}
+
+function canMergeShoppingItems(existing: ShoppingItem, incoming: ShoppingItem): boolean {
+  if (existing.completed || existing.deletedAt) return false
+  if (normalizeItemValue(existing.name) !== normalizeItemValue(incoming.name)) return false
+  if (normalizeItemValue(existing.unit) !== normalizeItemValue(incoming.unit)) return false
+  if (existing.catalogProductId && incoming.catalogProductId && existing.catalogProductId !== incoming.catalogProductId) return false
+  if (existing.catalogProductId === incoming.catalogProductId && existing.catalogProductId) return true
+  return !existing.note.trim() || !incoming.note.trim() || normalizeItemValue(existing.note) === normalizeItemValue(incoming.note)
+}
+
 function App() {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [household, setHousehold] = useState<Household>({ id: 'household-local', name: 'Mi casa', createdAt: Date.now() })
@@ -604,7 +617,18 @@ function App() {
       catalogProductId: null,
     }
     setItems((current) => {
-      const next = [newItem, ...current]
+      const existing = current.find((item) => canMergeShoppingItems(item, newItem))
+      const next = existing
+        ? current.map((item) => item.id === existing.id
+          ? {
+              ...item,
+              quantity: item.quantity + newItem.quantity,
+              note: item.note.trim() || newItem.note,
+              catalogProductId: item.catalogProductId ?? newItem.catalogProductId,
+              updatedAt: now,
+            }
+          : item)
+        : [newItem, ...current]
       itemsRef.current = next
       return next
     })
@@ -635,7 +659,18 @@ function App() {
       catalogProductId: product.id,
     }
     setItems((current) => {
-      const next = [newItem, ...current]
+      const existing = current.find((item) => canMergeShoppingItems(item, newItem))
+      const next = existing
+        ? current.map((item) => item.id === existing.id
+          ? {
+              ...item,
+              quantity: item.quantity + newItem.quantity,
+              note: item.note.trim() || newItem.note,
+              catalogProductId: item.catalogProductId ?? newItem.catalogProductId,
+              updatedAt: now,
+            }
+          : item)
+        : [newItem, ...current]
       itemsRef.current = next
       return next
     })
