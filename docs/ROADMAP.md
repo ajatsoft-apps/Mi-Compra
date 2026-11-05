@@ -31,7 +31,22 @@ Cerrada a nivel de código y compilación.
 
 ## Fase 5 — Backend y sincronización
 
-En curso. Cliente Supabase preparado y documentación de conexión creada. Falta conectar el proyecto, aplicar y validar la migración SQL, definir autenticación familiar, invitaciones y sincronización Realtime. Requiere la URL y la clave pública anon/publishable del proyecto. Nunca se solicitará ni almacenará una clave `service_role` en el cliente.
+Cerrada a nivel de implementación y despliegue de pruebas. Supabase Auth, PostgreSQL, RLS, Realtime, tombstones y sincronización offline-first están conectados. Las pruebas bidireccionales iniciales entre dispositivos han sido satisfactorias; queda mantener pruebas de uso prolongado y escenarios límite.
+
+- [x] Registro e inicio de sesión por correo.
+- [x] Creación y recuperación del hogar y la lista compartida.
+- [x] Sincronización inicial, cambios, borrados lógicos y Realtime.
+- [x] Reintentos tras recuperar conexión y actualización tras recargar la PWA.
+- [x] Códigos de invitación con hash, caducidad y límite de usos.
+- [x] Consulta de miembros y roles dentro del hogar.
+- [x] Revocación de invitaciones propias y por el propietario.
+- [x] Retirada de miembros por el propietario y revocación de sus invitaciones activas.
+- [x] Transferencia explícita de propiedad y transferencia automática al abandonar el propietario.
+- [x] Validación de permisos en funciones privadas y wrappers públicos SECURITY INVOKER.
+- [ ] Pruebas manuales con dos o más cuentas para invitación, retirada, transferencia y salida del propietario.
+- [ ] Pruebas de conflicto simultáneo y reloj desajustado durante uso prolongado.
+
+**Limitaciones conocidas:** un dispositivo tiene un hogar activo y no hay selector de varios hogares; los conflictos de edición simultánea usan last-write-wins. La revocación impide nuevos accesos al servidor, pero no puede borrar datos ya descargados del almacenamiento local de otro dispositivo.
 
 ## Fase 6 — Catálogo, preferencias y compras
 
