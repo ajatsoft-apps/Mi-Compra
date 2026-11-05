@@ -42,6 +42,9 @@ PAGES = {
     "fresh_fish": "https://www.lidl.es/c/frescos-pescado/s10089403",
     "fresh_meat": "https://www.lidl.es/c/frescos-carne/s10089402",
     "bakery": "https://www.lidl.es/c/panaderia/s10094507",
+    "everyday_food_brands": "https://www.lidl.es/c/tus-otras-marcas-de-siempre/a10089613",
+    "next_everyday_food_brands": "https://www.lidl.es/c/store/tus-otras-marcas-de-siempre-proxima-semana/a10090239",
+    "deluxe_food": "https://www.lidl.es/c/store/deluxe/a10089612",
 }
 
 USER_AGENT = (
