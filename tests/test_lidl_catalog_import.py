@@ -128,6 +128,14 @@ class LidlCatalogImportTests(unittest.TestCase):
         parser.feed(markup)
         self.assertEqual(parser.links, ["?page=1", "?page=2", "?page=3"])
 
+    def test_food_category_filter_accepts_grocery_and_rejects_bazaar(self):
+        self.assertTrue(importer.is_food_product({
+            "category": "Mundos de necesidad/Comida y bebida/Leche y nata"
+        }))
+        self.assertFalse(importer.is_food_product({
+            "category": "Cocina y cuidado del hogar/Pequeño electrodoméstico"
+        }))
+
     def test_region_resolver_uses_castellon_price_region(self):
         product = {
             "regionsV2": {
