@@ -11,6 +11,7 @@ export type ProductSuggestion = {
   format: string
   category: Category
   priceText: string
+  priceNumber: number | null
   imageUrl: string | null
   note: string
 }
@@ -56,6 +57,15 @@ function mapCategory(value: string | null | undefined): Category {
   if (normalized.includes('hogar') || normalized.includes('limpieza')) return 'Hogar'
   if (normalized.includes('despensa') || normalized.includes('alimentación') || normalized.includes('alimentacion') || normalized.includes('conserva')) return 'Despensa'
   return 'Otros'
+}
+
+function lidlPriceNumber(value: Record<string, unknown> | null): number | null {
+  if (!value) return null
+  const whole = String(value.largePartNumeric ?? '').replace(/[^0-9]/g, '')
+  if (!whole) return null
+  const decimals = String(value.smallPartNumeric ?? '').replace(/[^0-9]/g, '').slice(0, 2).padEnd(2, '0')
+  const parsed = Number(whole + '.' + decimals)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function formatLidlPrice(value: Record<string, unknown> | null): string {
@@ -161,6 +171,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
             format,
             category: mapCategory(row.category),
             priceText: euro.format(Number(row.unit_price)),
+            priceNumber: Number.isFinite(Number(row.unit_price)) ? Number(row.unit_price) : null,
             imageUrl: row.thumbnail_url,
             note: [row.brand, format].filter(Boolean).join(' · '),
           }
@@ -181,12 +192,18 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
               format: [snapshot?.store_name, offer.category].filter(Boolean).join(' · '),
               category: mapCategory(offer.category),
               priceText: price || 'Oferta semanal',
+              priceNumber: lidlPriceNumber(offer.price_box),
               imageUrl: offer.image_url,
               note: [offer.brand, offer.category, snapshot?.store_name].filter(Boolean).join(' · '),
             }
           })
 
-        setSuggestions([...mercadonaProducts, ...lidlProducts])
+        setSuggestions([...mercadonaProducts, ...lidlProducts].sort((a, b) => {
+          if (a.priceNumber === null && b.priceNumber === null) return a.name.localeCompare(b.name, 'es')
+          if (a.priceNumber === null) return 1
+          if (b.priceNumber === null) return -1
+          return a.priceNumber - b.priceNumber
+        }))
       } catch (cause) {
         if (active) {
           setSuggestions([])
