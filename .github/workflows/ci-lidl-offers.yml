@@ -6,6 +6,7 @@ on:
       - 'fase-5/**'
     paths:
       - 'scripts/import_lidl_weekly_offers.py'
+      - 'scripts/probe_lidl_catalog_api.py'
       - 'tests/test_import_lidl_weekly_offers.py'
       - 'src/LidlOffers.tsx'
       - 'src/App.tsx'
@@ -39,6 +40,17 @@ jobs:
         run: python -m py_compile scripts/import_lidl_weekly_offers.py tests/test_import_lidl_weekly_offers.py
       - name: Run Lidl importer tests
         run: python -m unittest discover -s tests -p 'test_import_lidl_weekly_offers.py' -v
+      - name: Probe Lidl public catalogue endpoint
+        if: contains(github.event.pull_request.title, '[LIDL PROBE]')
+        run: python scripts/probe_lidl_catalog_api.py
+      - name: Upload Lidl catalogue probe report
+        if: always() && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: lidl-catalog-api-probe
+          path: lidl-catalog-probe.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Install frontend dependencies
         run: npm ci
       - name: Type-check and build PWA
