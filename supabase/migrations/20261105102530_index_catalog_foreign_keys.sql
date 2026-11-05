@@ -1,0 +1,10 @@
+create index household_products_created_by_idx on public.household_products(created_by);
+create index household_product_preferences_product_household_idx on public.household_product_preferences(product_id, household_id);
+create index household_product_preferences_updated_by_idx on public.household_product_preferences(updated_by);
+create index household_product_equivalences_product_household_idx on public.household_product_equivalences(product_id, household_id);
+create index household_product_equivalences_equivalent_household_idx on public.household_product_equivalences(equivalent_product_id, household_id);
+create index household_product_equivalences_created_by_idx on public.household_product_equivalences(created_by);
+create index purchase_history_product_household_idx on public.purchase_history(product_id, household_id);
+create index purchase_history_created_by_idx on public.purchase_history(created_by);
+create index shopping_items_catalog_product_household_idx on public.shopping_list_items(catalog_product_id, household_id)
+where catalog_product_id is not null;
