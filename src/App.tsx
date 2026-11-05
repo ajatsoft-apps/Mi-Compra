@@ -519,8 +519,8 @@ function App() {
                       <div><strong>{syncLabel}</strong><small>{syncMessage || (syncDisconnected ? 'Este dispositivo no envía ni recibe cambios.' : syncPaused ? 'La sincronización está detenida temporalmente.' : 'La lista se comparte con los dispositivos conectados a este hogar.')}</small></div>
                     </div>
                     <div className="sync-details">
-                      <div><span>Hogar</span><strong>{household.name}</strong></div>
-                      <div><span>Lista compartida</span><strong>{list.name}</strong></div>
+                      <div><span>{syncDisconnected ? "Último hogar conectado" : "Hogar conectado"}</span><strong>{household.name}</strong></div>
+                      <div><span>{syncDisconnected ? "Lista conservada en este dispositivo" : "Lista compartida"}</span><strong>{list.name}</strong></div>
                       <div><span>Conexión</span><strong>{isOnline ? 'Internet disponible' : 'Sin conexión a Internet'}</strong></div>
                     </div>
                     <div className="account-actions">
