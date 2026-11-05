@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Import Lidl Spain weekly offers into exactly one private Mi Compra household."""
+"""Import Lidl Spain weekly offers into the app-wide Mi Compra catalogue."""
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -15,8 +14,7 @@ from typing import Any
 
 STORES_URL = "https://stores.lidlplus.com/api/v4/ES"
 OFFERS_URL = "https://offers.lidlplus.com/app/api/v4/ES/{store_key}/offers"
-USER_AGENT = "MiCompra-LidlOffersImporter/1.1"
-UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
+USER_AGENT = "MiCompra-LidlOffersImporter/2.0"
 
 
 def request_json(url: str, headers: dict[str, str] | None = None, method: str = "GET", body: Any = None) -> Any:
@@ -39,9 +37,8 @@ def request_json(url: str, headers: dict[str, str] | None = None, method: str = 
 def parse_datetime(value: Any) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
-    candidate = value.strip().replace("Z", "+00:00")
     try:
-        parsed = datetime.fromisoformat(candidate)
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     except ValueError:
         return None
     if parsed.tzinfo is None:
@@ -75,32 +72,20 @@ def normalize_offer(offer: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def supabase_headers(service_key: str) -> dict[str, str]:
-    return {
+def main() -> int:
+    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    store_keys = list(dict.fromkeys(value.strip() for value in os.getenv("LIDL_STORE_KEYS", "").split(",") if value.strip()))
+    if not supabase_url.startswith("https://") or not service_key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.")
+    if not store_keys:
+        raise RuntimeError("Set LIDL_STORE_KEYS to an explicit comma-separated list of store keys.")
+
+    headers = {
         "apikey": service_key,
         "Authorization": f"Bearer {service_key}",
         "Content-Type": "application/json",
     }
-
-
-def main() -> int:
-    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-    household_id = os.getenv("LIDL_HOUSEHOLD_ID", "").strip()
-    store_keys = list(dict.fromkeys(value.strip() for value in os.getenv("LIDL_STORE_KEYS", "").split(",") if value.strip()))
-    if not supabase_url.startswith("https://") or not service_key:
-        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.")
-    if not UUID_RE.fullmatch(household_id):
-        raise RuntimeError("LIDL_HOUSEHOLD_ID must contain the UUID of the one household to receive offers.")
-    if not store_keys:
-        raise RuntimeError("Set LIDL_STORE_KEYS to an explicit comma-separated list of store keys.")
-
-    headers = supabase_headers(service_key)
-    household_url = supabase_url + "/rest/v1/households?id=eq." + urllib.parse.quote(household_id, safe="") + "&select=id"
-    household_rows = request_json(household_url, headers)
-    if not isinstance(household_rows, list) or len(household_rows) != 1 or household_rows[0].get("id") != household_id:
-        raise RuntimeError("LIDL_HOUSEHOLD_ID does not identify an existing household; refusing to import.")
-
     stores = request_json(STORES_URL)
     if not isinstance(stores, list):
         raise RuntimeError("Lidl store endpoint did not return an array.")
@@ -139,7 +124,6 @@ def main() -> int:
             raise RuntimeError(f"Duplicate Lidl offer IDs for store {store_key}; refusing to publish.")
 
         body = {
-            "p_household_id": household_id,
             "p_store_key": store_key,
             "p_store_name": store_name,
             "p_store_postal_code": postal_code,
@@ -154,7 +138,7 @@ def main() -> int:
         total += len(offers)
         print(f"{store_key} · {store_name}: {len(offers)} ofertas importadas.")
 
-    print(f"Import completed: {total} offers for {len(store_keys)} stores in the configured household.")
+    print(f"Import completed: {total} offers across {len(store_keys)} stores in the shared PWA catalogue.")
     return 0
 
 
