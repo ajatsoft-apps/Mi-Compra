@@ -56,7 +56,7 @@ jobs:
       - name: Validar sintaxis de la sonda Lidl
         if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
         run: python -m py_compile scripts/probe_lidl_weekly_offers.py
-      - name: Consultar ofertas Lidl (solo lectura)
+      - name: Consultar ofertas Lidl (solo lectura, hasta cinco tiendas)
         if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
         env:
           LIDL_POSTAL_CODE: '12006'
