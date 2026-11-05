@@ -229,7 +229,7 @@ export async function synchronizeWorkspace(
 
   const { data: remoteAfter, error: finalReadError } = await client
     .from('shopping_list_items')
-    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id,supermarket')
+    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id,supermarket,unit_price')
     .eq('list_id', list.id)
     .order('created_at', { ascending: false })
   if (finalReadError) throw finalReadError
@@ -245,7 +245,7 @@ export async function pullRemoteItems(listId: string): Promise<ShoppingItem[]> {
   if (!supabase) throw new Error('Supabase no está configurado en esta instalación.')
   const { data, error } = await supabase
     .from('shopping_list_items')
-    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id,supermarket')
+    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id,supermarket,unit_price')
     .eq('list_id', listId)
     .order('created_at', { ascending: false })
   if (error) throw error
