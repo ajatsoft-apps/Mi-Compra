@@ -135,6 +135,9 @@ class LidlCatalogImportTests(unittest.TestCase):
         self.assertFalse(importer.is_food_product({
             "category": "Cocina y cuidado del hogar/Pequeño electrodoméstico"
         }))
+        self.assertFalse(importer.is_food_product({
+            "category": "Non-food/Home and Garden"
+        }))
 
     def test_region_resolver_uses_castellon_price_region(self):
         product = {
