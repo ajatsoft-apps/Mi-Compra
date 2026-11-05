@@ -84,14 +84,6 @@ function createShoppingListPdf(title: string, items: ShoppingItem[]): Blob {
   return new Blob([new TextEncoder().encode(pdf)], { type: 'application/pdf' })
 }
 
-const categoryIcons: Record<Category, string> = {
-  'Fruta y verdura': '🥑',
-  Lácteos: '🥛',
-  Despensa: '🥫',
-  Bebidas: '🧃',
-  Hogar: '🧽',
-  Otros: '🛒',
-}
 
 function createItemId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
@@ -1208,14 +1200,16 @@ function App() {
                 <label className="field-label" htmlFor="product-price">Precio por unidad (€) <span className="optional">(opcional)</span></label>
                 <input id="product-price" className="text-input" type="number" min="0" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Se completa al elegir un producto" />
               </div>
-              <label className="field-label category-label">Categoría</label>
-              <div className="category-options">
-                {categories.map((option) => (
-                  <button className={category === option ? 'category-chip selected' : 'category-chip'} type="button" key={option} onClick={() => setCategory(option)}>
-                    <span>{categoryIcons[option]}</span>{option}
-                  </button>
-                ))}
-              </div>
+              <details className="category-details">
+                <summary>Categoría (opcional)</summary>
+                <div className="category-options">
+                  {categories.map((option) => (
+                    <button className={category === option ? 'category-chip selected' : 'category-chip'} type="button" key={option} onClick={() => setCategory(option)}>
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </details>
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
               <p className="autocomplete-fallback-note">Si no aparece en los catálogos, se añadirá como producto genérico a la primera lista activa: {storeLabels[firstEnabledStore]}.</p>
@@ -1277,7 +1271,6 @@ function App() {
                 {visibleItems.map((item) => (
                   <li className={['shopping-item', item.completed ? 'completed' : '', item.supermarket === 'lidl' ? 'lidl' : item.supermarket === 'mercadona' ? 'mercadona' : ''].filter(Boolean).join(' ')} key={item.id}>
                     <button className="check-button" type="button" onClick={() => toggleItem(item.id)} aria-label={item.completed ? `Marcar ${item.name} como pendiente` : `Marcar ${item.name} como comprado`} aria-pressed={item.completed}>{item.completed ? '✓' : ''}</button>
-                    <span className="item-category-icon" aria-hidden="true">{categoryIcons[item.category]}</span>
                     <div className="item-details">
                       <strong>{item.name}</strong>
                       <span>{item.quantity} {item.unit}{item.note ? ` · ${item.note}` : ''}</span>
