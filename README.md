@@ -4,11 +4,11 @@ Asistente inteligente de compra familiar.
 
 ## Estado
 
-El frontend PWA dispone de lista local en IndexedDB, autenticación por correo, sincronización offline-first con Supabase Auth, PostgreSQL y Realtime, hogares compartidos, invitaciones y gestión de miembros. La fase 3 se desarrolla en `fase-3/gestion-familiar`, basada en `fase-5/backend-supabase`; requiere pruebas reales con varias cuentas antes de integrarla en `main`.
+El frontend PWA dispone de lista local en IndexedDB, autenticación por correo, sincronización con Supabase Auth, PostgreSQL y Realtime, hogares compartidos, invitaciones, gestión de miembros y un catálogo familiar de productos con preferencias, equivalencias e historial de compras. La fase 6 se desarrolla en `fase-6/catalogo-productos`, basada en `fase-5/backend-supabase`; requiere pruebas reales multiusuario y en dispositivos antes de integrarla en la rama desplegada.
 
 ## Publicación de pruebas
 
-La PWA se publica mediante GitHub Actions en [GitHub Pages](https://ajatsoft-apps.github.io/Mi-Compra/). El despliegue está vinculado a la rama `fase-5/backend-supabase`; no modifica `main`. Requiere configurar las variables de Actions y activar GitHub Pages con origen **GitHub Actions**. Consulta [la guía de Supabase y despliegue](docs/SUPABASE_SETUP.md).
+La PWA se publica mediante GitHub Actions en [GitHub Pages](https://ajatsoft-apps.github.io/Mi-Compra/). El despliegue está vinculado a la rama `fase-5/backend-supabase`; la rama de desarrollo `fase-6/catalogo-productos` no se publica hasta superar las pruebas y fusionarse. Requiere configurar las variables de Actions y activar GitHub Pages con origen **GitHub Actions**. Consulta [la guía de Supabase y despliegue](docs/SUPABASE_SETUP.md).
 
 ## Objetivo
 
