@@ -1046,3 +1046,55 @@ button { touch-action:manipulation; }
   .lidl-offer-tabs button { min-height: 50px; font-size: 14px; }
   .lidl-offer-add { width: 100%; min-height: 44px; font-size: 14px; }
 }
+
+
+/* Catálogo familiar: buscador de productos y acciones compactas */
+.catalog-products-card > .product-autocomplete { margin: 8px 0 20px; }
+.catalog-list-search { border-top: 1px solid #edf1e9; padding-top: 15px; }
+.catalog-product-row { align-items: center; gap: 12px; }
+.catalog-product-row .management-person { flex: 1 1 auto; min-width: 0; }
+.catalog-actions {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.catalog-actions button {
+  min-height: 31px;
+  padding: 5px 8px;
+  border: 1px solid #e5ebe2;
+  border-radius: 8px;
+  background: #f8faf6;
+  color: #526153;
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.catalog-actions .catalog-action-add { background: #edf7ed; border-color: #cce5cc; color: #286d36; }
+.catalog-actions .catalog-action-preferences { background: #f4f5f1; }
+.catalog-actions .catalog-action-edit { background: #f1f5fa; border-color: #dce6f0; }
+.catalog-actions .catalog-action-purchase { background: #eff7f1; border-color: #d4e8d8; }
+.catalog-actions .catalog-action-archive { background: #fff7f4; border-color: #f0dfda; color: #965b4e; }
+@media (max-width:760px) {
+  .catalog-product-row { grid-template-columns:minmax(0,1fr); gap:8px; }
+  .catalog-actions {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .catalog-actions button {
+    flex: 0 1 auto;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+}
+@media (max-width:390px) {
+  .catalog-actions button { min-height: 32px; padding: 5px 7px; font-size: 11px; }
+}
