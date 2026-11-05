@@ -68,21 +68,22 @@ Implementación integrada y desplegada en `fase-5/backend-supabase`. CI correcto
 
 ## Fase 7 — Fuentes de precios y promociones
 
-En implementación inicial. OpenCesta se ha seleccionado como fuente de Mercadona: publica snapshots diarios en Parquet para cuatro zonas, incluida vlc1. Se han creado tablas ODbL separadas, carga transaccional, importador diario y pantalla de consulta en la PWA. Falta añadir el secreto de servicio a GitHub, ejecutar y validar la primera importación y confirmar si vlc1 corresponde al código postal 12006.
+Primera integración implementada y validada en producción. OpenCesta publica snapshots diarios de Mercadona en Parquet para cuatro zonas, incluida vlc1. Mi Compra descarga el dataset publicado, lo valida y lo importa en tablas ODbL separadas mediante una publicación transaccional. La primera captura real (04/11/2026) contiene 4.379 observaciones. La correspondencia exacta de vlc1 con cada tienda/código postal no está certificada; el usuario ha comprobado que los precios observados coinciden en principio y se revisará cuando haya nuevas capturas.
 
 - [x] Evaluar fuentes abiertas y condiciones de reutilización.
 - [x] Identificar limitaciones de cobertura para Mercadona, Lidl y Carrefour.
 - [x] Documentar la decisión de no automatizar endpoints privados de Mercadona sin autorización.
 - [ ] Comprobar cobertura real de CholloSúper y Open Prices en el ámbito 12006.
-- [ ] Diseñar tablas de observaciones de mercado, fuentes, ámbito geográfico y evidencia.
-- [ ] Implementar el primer adaptador con licencia reutilizable confirmada.
+- [x] Diseñar tablas separadas de snapshots, observaciones y staging.
+- [x] Implementar el adaptador OpenCesta con licencia ODbL-1.0 y atribución.
 - [ ] Permitir registrar observaciones propias sin confundirlas con un catálogo completo.
 - [x] Añadir pantalla de consulta de Mercadona con fecha, fuente, zona y licencia visibles.
-- [ ] Pruebas de calidad, caducidad, deduplicación y datos ausentes.
+- [x] Validar la primera importación real y comprobar el número de filas publicado.
+- [ ] Pruebas prolongadas de calidad, caducidad, deduplicación y datos ausentes.
 
 ## Fase 8 — Comparador y optimizador
 
-Pendiente: reglas deterministas, umbrales de ahorro, promociones condicionadas y costes de desplazamiento.
+En desarrollo. Primera entrega: cálculo parcial y explícito de la cesta contra precios de Mercadona, con coincidencia exclusiva por EAN y conversión de unidades controlada. No se afirmará que una cesta completa está calculada cuando falten referencias o unidades compatibles. La comparación entre cadenas, promociones condicionadas y costes de desplazamiento quedan pendientes de fuentes y datos suficientes.
 
 ## Fase 9 — Voz, notificaciones y pruebas
 
