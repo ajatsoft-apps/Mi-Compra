@@ -208,7 +208,7 @@ def product_common_fields(data: dict[str, Any]) -> dict[str, Any]:
     if article and article not in codes:
         codes.insert(0, article)
     return {
-        "product_id": article or normalize_code(data.get("productId")) or normalize_code(data.get("code")),
+        "product_id": normalize_code(first_value(data.get("productId"), data.get("code"), article)),
         "article_code": article,
         "product_name": clean_text(first_value(data.get("fullTitle"), keyfacts.get("fullTitle"), keyfacts.get("title"), data.get("title"))) or "Producto Lidl",
         "brand": product_brand(data),
@@ -552,9 +552,10 @@ def crawl_online_catalog(max_pages: int | None, captured_at: str) -> tuple[dict[
     return products, reported_total, {"passes": pass_stats}
 
 
-def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
     records: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
     page_stats: list[dict[str, Any]] = []
+    resolved_region_ids: set[str] = set()
     for index, (page_name, url) in enumerate(PAGES.items()):
         page_html = fetch_html(url)
         parser = ProductAttributeParser()
@@ -562,6 +563,9 @@ def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str
         page_products = parser.products
         before = len(records)
         for product in page_products:
+            region_id = resolve_price_region(product, region_name)
+            if region_id:
+                resolved_region_ids.add(str(region_id))
             for row in parse_page_product(product, page_name, captured_at, region_name):
                 key = (
                     row["product_id"],
@@ -580,7 +584,7 @@ def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str
         })
         if index < len(PAGES) - 1:
             time.sleep(HTML_DELAY_SECONDS)
-    return list(records.values()), {"pages": page_stats}
+    return list(records.values()), {"pages": page_stats}, sorted(resolved_region_ids)
 
 
 def insert_snapshot(
@@ -711,8 +715,9 @@ def main() -> int:
             "with_ean": sum(1 for row in online_products.values() if row["ean"]),
         }
 
-        page_rows, page_stats = crawl_store_pages(captured_at, REGION_NAME)
+        page_rows, page_stats, region_ids = crawl_store_pages(captured_at, REGION_NAME)
         report["pages"] = page_stats
+        report["resolved_region_price_ids"] = region_ids
 
         all_rows: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
         for row in online_products.values():
@@ -753,11 +758,7 @@ def main() -> int:
         if not supabase_url or not service_key:
             raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for a real import.")
 
-        region_price_id = "1"
-        for row in page_rows:
-            if row["source"] in ("weekly", "category"):
-                region_price_id = "1"
-                break
+        region_price_id = region_ids[0] if region_ids else "1"
         source_pages = list(PAGES.keys()) + ["online_search_price", "online_search_price_desc"]
         snapshot_id = insert_snapshot(
             supabase_url, service_key, captured_at, REGION_NAME, region_price_id,
