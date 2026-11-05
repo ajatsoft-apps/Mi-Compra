@@ -70,6 +70,14 @@ Cada precio debe conservar importe, unidad de medida, fecha de observación, fue
 
 Cada cadena tendrá un adaptador desacoplado. La aplicación distinguirá datos de catálogo, precios, disponibilidad y promociones. No se presupone que exista una API pública estable para todas las cadenas; cada fuente se validará antes de automatizarla.
 
+## Fuentes de precios y promociones
+
+Los datos externos se incorporan mediante adaptadores independientes, uno por fuente. La fuente conserva su identificador, URL, licencia, atribución, fecha de importación y estado. Cada observación de precio conserva el producto exacto o la categoría genérica, importe, unidad de referencia, moneda, establecimiento o zona, fecha de observación, vigencia, tipo de precio y condiciones de promoción.
+
+No se equipara una media de categoría con el precio de una referencia concreta. No se mezclan precios de zonas diferentes. Las promociones condicionadas (tarjeta, cantidad mínima, segunda unidad, packs) se almacenan como condiciones explícitas, no como un precio unitario engañoso. Los datos caducados se conservan para histórico, pero no se presentan como vigentes.
+
+Las fuentes con licencias incompatibles con el modelo de distribución se mantienen fuera del conjunto integrado hasta resolver sus obligaciones de atribución y compartir derivados. La evaluación y cobertura conocida se documenta en `docs/FUENTES_PRECIOS.md`.
+
 ## Motor de comparación
 
 La IA podrá interpretar texto, proponer categorías y detectar posibles equivalencias. Los cálculos de precio unitario, descuentos, mínimos, coste de desplazamiento y ahorro serán reglas deterministas y explicables.
