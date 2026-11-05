@@ -1,6 +1,13 @@
 name: Import Lidl product catalogue
 
 on:
+  push:
+    branches:
+      - fase-5/backend-supabase
+    paths:
+      - 'scripts/import_lidl_catalog.py'
+      - 'tests/test_lidl_catalog_import.py'
+      - '.github/workflows/import-lidl-catalog.yml'
   schedule:
     - cron: '30 7 * * 1,5'
   workflow_dispatch:
@@ -21,7 +28,7 @@ concurrency:
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout importer branch
         uses: actions/checkout@v4
@@ -33,8 +40,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate importer syntax
-        run: python -m py_compile scripts/import_lidl_catalog.py
+      - name: Validate importer and regression tests
+        run: |
+          python -m py_compile scripts/import_lidl_catalog.py tests/test_lidl_catalog_import.py
+          python -m unittest discover -s tests -p 'test_lidl_catalog_import.py' -v
 
       - name: Import Lidl online catalogue and store offers
         run: python scripts/import_lidl_catalog.py
