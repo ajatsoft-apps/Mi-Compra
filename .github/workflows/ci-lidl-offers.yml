@@ -6,6 +6,7 @@ on:
       - 'fase-5/**'
     paths:
       - 'scripts/import_lidl_weekly_offers.py'
+      - 'scripts/probe_lidl_food_pages.py'
       - 'tests/test_import_lidl_weekly_offers.py'
       - 'src/LidlOffers.tsx'
       - 'src/App.tsx'
