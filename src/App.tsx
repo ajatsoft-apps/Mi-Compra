@@ -659,7 +659,18 @@ function App() {
       catalogProductId: product.id,
     }
     setItems((current) => {
-      const next = [newItem, ...current]
+      const existing = current.find((item) => canMergeShoppingItems(item, newItem))
+      const next = existing
+        ? current.map((item) => item.id === existing.id
+          ? {
+              ...item,
+              quantity: item.quantity + newItem.quantity,
+              note: item.note.trim() || newItem.note,
+              catalogProductId: item.catalogProductId ?? newItem.catalogProductId,
+              updatedAt: now,
+            }
+          : item)
+        : [newItem, ...current]
       itemsRef.current = next
       return next
     })
