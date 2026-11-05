@@ -911,10 +911,11 @@ function App() {
   async function saveSelectedProductToCatalog() {
     const pending = catalogSavePrompt
     if (!pending || !supabase || !session || !hasRemoteHousehold || !isOnline) return
+    const db = supabase
     setCatalogSaveBusy(true)
     setCatalogSaveFeedback('')
     try {
-      const lookup = () => supabase
+      const lookup = () => db
         .from('household_products')
         .select('id')
         .eq('household_id', household.id)
@@ -927,7 +928,7 @@ function App() {
       if (lookupError) throw lookupError
       let catalogId = existing?.id as string | undefined
       if (!catalogId) {
-        const { data: inserted, error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await db
           .from('household_products')
           .insert({
             household_id: household.id,
