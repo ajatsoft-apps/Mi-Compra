@@ -145,7 +145,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
   }
 
   async function archiveProduct(product: CatalogProduct) {
-    if (!supabase || !window.confirm('¿Archivar «' + product.name + '»? No aparecerá al añadir productos, pero se conservarán sus compras anteriores.')) return
+    if (!supabase || !online || !window.confirm('¿Archivar «' + product.name + '»? No aparecerá al añadir productos, pero se conservarán sus compras anteriores.')) return
     setBusy(true); setError('')
     const { error: updateError } = await supabase.from('household_products').update({ archived_at: new Date().toISOString() }).eq('id', product.id).eq('household_id', householdId)
     if (updateError) setError(updateError.message)
@@ -155,7 +155,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
 
   async function savePreference(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!supabase || !selectedProduct) return
+    if (!supabase || !online || !selectedProduct) return
     setBusy(true); setError('')
     const { error: saveError } = await supabase.from('household_product_preferences').upsert({
       household_id: householdId, product_id: selectedProduct, preferred_brand: preferenceBrand.trim(),
@@ -168,7 +168,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
 
   async function addEquivalence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!supabase || !selectedProduct || !equivalentProduct || selectedProduct === equivalentProduct) return
+    if (!supabase || !online || !selectedProduct || !equivalentProduct || selectedProduct === equivalentProduct) return
     setBusy(true); setError('')
     const { error: saveError } = await supabase.from('household_product_equivalences').upsert({
       household_id: householdId, product_id: selectedProduct, equivalent_product_id: equivalentProduct,
@@ -180,7 +180,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
   }
 
   async function deleteEquivalence(id: string) {
-    if (!supabase) return
+    if (!supabase || !online) return
     const { error: deleteError } = await supabase.from('household_product_equivalences').delete().eq('id', id).eq('household_id', householdId)
     if (deleteError) setError(deleteError.message)
     else await refresh()
@@ -188,7 +188,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
 
   async function recordPurchase(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!supabase || !purchaseTarget) return
+    if (!supabase || !online || !purchaseTarget) return
     const qty = Number(purchaseQuantity), unitPrice = purchaseUnitPrice.trim() ? Number(purchaseUnitPrice) : null
     const total = purchaseTotal.trim() ? Number(purchaseTotal) : unitPrice === null ? null : Number((qty * unitPrice).toFixed(2))
     if (!Number.isFinite(qty) || qty <= 0 || (unitPrice !== null && (!Number.isFinite(unitPrice) || unitPrice < 0)) || (total !== null && (!Number.isFinite(total) || total < 0))) {
@@ -255,7 +255,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                       <div className="management-person"><strong>{product.name}</strong><span>{[product.brand, product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '', product.barcode ?? ''].filter(Boolean).join(' · ') || product.category}</span></div>
                       <div className="management-actions catalog-actions">
                         <button type="button" className="management-link" onClick={() => onAddToList(product)}>Añadir</button>
-                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>Preferencias</button>
+                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}} disabled={!online || busy}>Preferencias</button>
                         <button type="button" className="management-link" disabled={!online || busy} onClick={() => editProduct(product)}>Editar</button>
                         <button type="button" className="management-remove" disabled={!online || busy} onClick={() => void archiveProduct(product)}>Archivar</button>
                         <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setPurchaseTarget(product); setPurchaseQuantity('1') }}>Compra</button>
@@ -282,7 +282,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                 <select className="text-input" value={equivalenceType} onChange={(e) => setEquivalenceType(e.target.value as typeof equivalenceType)}><option value="accepted_substitute">Sustituto aceptado</option><option value="same_product">Mismo producto</option></select>
                 <button className="secondary-action" type="submit" disabled={busy || !online || !equivalentProduct}>Guardar equivalencia</button>
               </form>
-              {equivalences.filter((eq) => eq.product_id === selectedProduct).map((eq) => <div className="catalog-equivalence-row" key={eq.id}><span>{products.find((p) => p.id === eq.equivalent_product_id)?.name ?? 'Producto'} · {eq.equivalence_type === 'same_product' ? 'Mismo producto' : 'Sustituto aceptado'}</span><button className="management-remove" type="button" onClick={() => void deleteEquivalence(eq.id)}>Quitar</button></div>)}
+              {equivalences.filter((eq) => eq.product_id === selectedProduct).map((eq) => <div className="catalog-equivalence-row" key={eq.id}><span>{products.find((p) => p.id === eq.equivalent_product_id)?.name ?? 'Producto'} · {eq.equivalence_type === 'same_product' ? 'Mismo producto' : 'Sustituto aceptado'}</span><button className="management-remove" type="button" disabled={!online || busy} onClick={() => void deleteEquivalence(eq.id)}>Quitar</button></div>)}
             </section>
           )}
         </>
