@@ -19,6 +19,8 @@ PAGES = {
     "next_week": "https://www.lidl.es/c/store/ofertas-proxima-semana/a10088432",
     "weekend": "https://www.lidl.es/c/store/super-finde/a10089450",
     "next_weekend": "https://www.lidl.es/c/store/super-finde-proxima-semana/a10089609",
+    "food_category": "https://www.lidl.es/c/alimentacion/s10068374",
+    "fresh_produce_category": "https://www.lidl.es/c/frescos-frutas-y-verduras/s10089404",
 }
 OUTPUT = Path("lidl-food-page-probe.json")
 USER_AGENT = (
