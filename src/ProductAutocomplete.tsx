@@ -131,7 +131,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
               ? lidlPriceNumber(row.price_box)
               : row.unit_price === null ? null : Number(row.unit_price)
             const priceText = isLidl
-              ? formatLidlPrice(row.price_box) || 'Oferta semanal'
+              ? numericPrice === null ? 'Precio no publicado' : formatLidlPrice(row.price_box) || 'Precio no disponible'
               : numericPrice === null ? 'Precio no disponible' : euro.format(numericPrice)
             const format = cleanFormat(row.format)
             return {
