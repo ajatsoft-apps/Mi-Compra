@@ -68,7 +68,7 @@ Cada precio debe conservar importe, unidad de medida, fecha de observación, fue
 
 ## Integraciones comerciales
 
-Cada cadena tendrá un adaptador desacoplado. La aplicación distinguirá datos de catálogo, precios, disponibilidad y promociones. No se presupone que exista una API pública estable para todas las cadenas; cada fuente se validará antes de automatizarla.
+Cada cadena tendrá un adaptador desacoplado. La aplicación distinguirá datos de catálogo, precios, disponibilidad y promociones. No se presupone que exista una API pública estable para todas las cadenas; cada fuente se validará antes de automatizarla. Los endpoints internos no documentados de una tienda no se tratarán como API autorizada por el mero hecho de responder sin autenticación. La integración automática de Mercadona queda bloqueada hasta confirmar permiso o disponer de un feed reutilizable.
 
 ## Fuentes de precios y promociones
 
