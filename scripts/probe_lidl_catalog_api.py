@@ -49,6 +49,12 @@ def parse_product(item: dict[str, Any]) -> dict[str, Any] | None:
         "name": first_value(data.get("fullTitle"), data.get("title")),
         "brand": brand.get("name") if isinstance(brand, dict) else brand,
         "price_eur": first_value(price.get("price"), price.get("amount")),
+        "raw_price": price,
+        "raw_gs1_attributes": data.get("gs1Attributes"),
+        "raw_ians": data.get("ians"),
+        "raw_product_type": data.get("productType"),
+        "raw_stock_availability": data.get("stockAvailability"),
+        "raw_regions_prices": data.get("regionsPrices"),
         "reference_price_eur": base_price.get("price") if isinstance(base_price, dict) else None,
         "reference_unit": first_value(
             base_price.get("unit") if isinstance(base_price, dict) else None,
@@ -144,7 +150,7 @@ def main() -> int:
         "requests": [],
     }
     try:
-        for query, sort in (("leche", None), ("leche", "price"), ("", "price"), ("", "price-desc")):
+        for query, sort in (("leche", None), ("leche semidesnatada", None), ("aceite", None), ("arroz", None), ("huevos", None), ("yogur", None), ("pan", None), ("", "price")):
             result = fetch(query, sort)
             report["requests"].append(result)
             print(
