@@ -955,21 +955,19 @@ button { touch-action:manipulation; }
 }
 
 
-/* Lista de compra: identidad de supermercado con fondo muy suave */
+/* Lista principal neutra: los colores de supermercado se reservan al buscador */
 .shopping-item {
-  border: 2px solid #e8eee6;
-  border-radius: 13px;
-  margin: 7px 0;
-  padding: 10px 9px;
-  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #edf0ea;
+  border-radius: 0;
+  margin: 0;
+  padding: 12px 2px;
+  background: transparent;
 }
-.shopping-item.mercadona {
-  border-color: #9acb9e;
-  background: #f5fbf4;
-}
+.shopping-item.mercadona,
 .shopping-item.lidl {
-  border-color: #ecd47a;
-  background: #fffdf3;
+  border-color: #edf0ea;
+  background: transparent;
 }
 .shopping-item.completed {
   opacity: .78;
@@ -1098,3 +1096,11 @@ button { touch-action:manipulation; }
 @media (max-width:390px) {
   .catalog-actions button { min-height: 32px; padding: 5px 7px; font-size: 11px; }
 }
+
+
+.category-details { margin: 0 0 15px; border: 1px solid #e8ece5; border-radius: 9px; background: #fbfcfa; }
+.category-details summary { padding: 10px 12px; color: #718071; font-size: 11px; font-weight: 700; cursor: pointer; list-style-position: inside; }
+.category-details[open] summary { border-bottom: 1px solid #edf0ea; }
+.category-details .category-options { padding: 10px; margin: 0; }
+.product-suggestion.mercadona { background: #f5fbf4; border-color: #69ad70; }
+.product-suggestion.lidl { background: #fffdf0; border-color: #d9ae1d; }
