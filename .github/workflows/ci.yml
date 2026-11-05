@@ -8,9 +8,11 @@ on:
       - 'fase-3/**'
       - 'fase-4/**'
       - 'fase-5/**'
+      - 'fase-6/**'
   pull_request:
     branches:
       - main
+      - 'fase-5/**'
 
 permissions:
   contents: write

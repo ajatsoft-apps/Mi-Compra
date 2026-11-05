@@ -19,6 +19,7 @@ type RemoteItem = {
   updated_at: string
   completed_at: string | null
   deleted_at: string | null
+  catalog_product_id: string | null
 }
 
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
@@ -44,6 +45,7 @@ function toLocalItem(row: RemoteItem): ShoppingItem {
     createdAt,
     updatedAt: toTimestamp(row.updated_at, createdAt),
     deletedAt: row.deleted_at ? toTimestamp(row.deleted_at, Date.now()) : null,
+    catalogProductId: row.catalog_product_id ?? null,
   }
 }
 
@@ -151,7 +153,7 @@ export async function synchronizeWorkspace(
 
   const { data: remoteBefore, error: readItemsError } = await client
     .from('shopping_list_items')
-    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at')
+    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id')
     .eq('list_id', list.id)
   if (readItemsError) throw readItemsError
 
@@ -183,6 +185,7 @@ export async function synchronizeWorkspace(
       updated_by: user.id,
       updated_at: new Date(item.updatedAt).toISOString(),
       deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
+      catalog_product_id: item.catalogProductId ?? null,
     }
 
     if (remote) {
@@ -220,7 +223,7 @@ export async function synchronizeWorkspace(
 
   const { data: remoteAfter, error: finalReadError } = await client
     .from('shopping_list_items')
-    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at')
+    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id')
     .eq('list_id', list.id)
     .order('created_at', { ascending: false })
   if (finalReadError) throw finalReadError
@@ -236,7 +239,7 @@ export async function pullRemoteItems(listId: string): Promise<ShoppingItem[]> {
   if (!supabase) throw new Error('Supabase no está configurado en esta instalación.')
   const { data, error } = await supabase
     .from('shopping_list_items')
-    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at')
+    .select('id, household_id, list_id, product_name, quantity, unit, category, note, is_completed, created_by, updated_by, created_at, updated_at, completed_at, deleted_at, catalog_product_id')
     .eq('list_id', listId)
     .order('created_at', { ascending: false })
   if (error) throw error

@@ -74,3 +74,20 @@ El registro redirige a la URL base de la aplicación (`import.meta.env.BASE_URL`
 - Los helpers SECURITY DEFINER están en el esquema no expuesto `private`, con `search_path` vacío y permisos restringidos.
 - La RPC pública `create_household` es SECURITY INVOKER y delega en la función privada.
 - Los datos de cada hogar se aíslan mediante políticas de pertenencia.
+
+
+## Catálogo, preferencias y compras
+
+La fase 6 añade estas tablas, todas con RLS y publicación Realtime:
+
+- `household_products`: catálogo privado de cada hogar con nombre, marca, código EAN/GTIN, formato, unidad, categoría y notas. Los productos se archivan para conservar referencias.
+- `household_product_preferences`: marca y formato preferidos y aceptación de sustitutos.
+- `household_product_equivalences`: relaciones explícitas de mismo producto o sustituto aceptado.
+- `purchase_history`: instantáneas de compras realizadas, cantidades, precios pagados y establecimiento.
+- `shopping_list_items.catalog_product_id`: referencia opcional al producto del catálogo del mismo hogar.
+
+El rol `anon` y el rol `public` no tienen privilegios sobre estas tablas; las operaciones se reservan a usuarios autenticados y las políticas RLS limitan cada fila a miembros del hogar. Las claves foráneas compuestas impiden enlazar productos de hogares diferentes.
+
+La pantalla Catálogo aparece cuando la cuenta está conectada a un hogar remoto. Permite crear, editar y archivar productos; configurar preferencias y sustitutos; añadir productos a la lista; y registrar compras. La caché local permite consultar los productos ya descargados y añadirlos a la lista sin conexión. Las modificaciones del catálogo y el registro de compras requieren conexión.
+
+El historial registra importes realmente pagados y no representa precios actuales de supermercado. La fase de fuentes de precios y promociones es posterior y debe mantener fuente, fecha y nivel de confianza.
