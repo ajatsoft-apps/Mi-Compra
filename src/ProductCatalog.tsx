@@ -169,7 +169,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
     const { error: saveError } = await supabase.from('household_product_equivalences').upsert({
       household_id: householdId, product_id: selectedProduct, equivalent_product_id: equivalentProduct,
       equivalence_type: equivalenceType, created_by: userId,
-    }, { onConflict: 'household_id,product_id,equivalent_product_id' })
+    }, { onConflict: 'household_id,product_id,equivalent_product_id', ignoreDuplicates: true })
     if (saveError) setError(saveError.message)
     else { setEquivalentProduct(''); setMessage('Equivalencia guardada.'); await refresh() }
     setBusy(false)
@@ -210,7 +210,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
         <h1>Catálogo familiar</h1>
         <p>Guarda productos habituales, formatos, preferencias y sustitutos aceptados por el hogar.</p>
       </div>
-      {!online && <p className="auth-feedback error" role="status">El catálogo compartido necesita conexión. La lista de compra sigue disponible sin conexión.</p>}
+      {!online && <p className="auth-feedback error" role="status">Sin conexión: puedes consultar los productos guardados en este dispositivo y añadirlos a la lista. Para editar el catálogo, preferencias, equivalencias o compras necesitas internet.</p>}
       {error && <p className="auth-feedback error" role="alert">{error}</p>}
       {message && <p className="auth-feedback" role="status">{message}</p>}
       <div className="catalog-tabs">
@@ -251,10 +251,10 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                       <div className="management-person"><strong>{product.name}</strong><span>{[product.brand, product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '', product.barcode ?? ''].filter(Boolean).join(' · ') || product.category}</span></div>
                       <div className="management-actions catalog-actions">
                         <button type="button" className="management-link" onClick={() => onAddToList(product)}>Añadir</button>
-                        <button type="button" className="management-link" onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>Preferencias</button>
-                        <button type="button" className="management-link" onClick={() => editProduct(product)}>Editar</button>
-                        <button type="button" className="management-remove" onClick={() => void archiveProduct(product)}>Archivar</button>
-                        <button type="button" className="management-link" onClick={() => { setPurchaseTarget(product); setPurchaseQuantity('1') }}>Compra</button>
+                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>Preferencias</button>
+                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => editProduct(product)}>Editar</button>
+                        <button type="button" className="management-remove" disabled={!online || busy} onClick={() => void archiveProduct(product)}>Archivar</button>
+                        <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setPurchaseTarget(product); setPurchaseQuantity('1') }}>Compra</button>
                       </div>
                     </li>
                   ))}
@@ -270,13 +270,13 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                 <label className="field-label">Marca preferida</label><input className="text-input" value={preferenceBrand} onChange={(e) => setPreferenceBrand(e.target.value)} maxLength={80} />
                 <label className="field-label">Formato preferido</label><input className="text-input" value={preferenceFormat} onChange={(e) => setPreferenceFormat(e.target.value)} maxLength={80} placeholder="Ej. 1 L, paquete de 6" />
                 <label className="catalog-checkbox"><input type="checkbox" checked={allowSubstitutes} onChange={(e) => setAllowSubstitutes(e.target.checked)} /> Aceptar productos sustitutos</label>
-                <button className="add-button" type="submit" disabled={busy}>Guardar preferencias</button>
+                <button className="add-button" type="submit" disabled={busy || !online}>Guardar preferencias</button>
               </form>
               <form className="catalog-equivalence-form" onSubmit={addEquivalence}>
                 <label className="field-label" htmlFor="catalog-equivalent">Añadir equivalente o sustituto aceptado</label>
                 <select id="catalog-equivalent" className="text-input" value={equivalentProduct} onChange={(e) => setEquivalentProduct(e.target.value)}><option value="">Seleccionar producto…</option>{products.filter((p) => p.id !== selectedProduct && !equivalences.some((eq) => eq.product_id === selectedProduct && eq.equivalent_product_id === p.id)).map((p) => <option key={p.id} value={p.id}>{p.name} · {p.brand}</option>)}</select>
                 <select className="text-input" value={equivalenceType} onChange={(e) => setEquivalenceType(e.target.value as typeof equivalenceType)}><option value="accepted_substitute">Sustituto aceptado</option><option value="same_product">Mismo producto</option></select>
-                <button className="secondary-action" type="submit" disabled={busy || !equivalentProduct}>Guardar equivalencia</button>
+                <button className="secondary-action" type="submit" disabled={busy || !online || !equivalentProduct}>Guardar equivalencia</button>
               </form>
               {equivalences.filter((eq) => eq.product_id === selectedProduct).map((eq) => <div className="catalog-equivalence-row" key={eq.id}><span>{products.find((p) => p.id === eq.equivalent_product_id)?.name ?? 'Producto'} · {eq.equivalence_type === 'same_product' ? 'Mismo producto' : 'Sustituto aceptado'}</span><button className="management-remove" type="button" onClick={() => void deleteEquivalence(eq.id)}>Quitar</button></div>)}
             </section>
@@ -298,7 +298,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
               <label className="field-label">Precio por envase (€)</label><input className="text-input" type="number" min="0" step="0.0001" value={purchaseUnitPrice} onChange={(e) => setPurchaseUnitPrice(e.target.value)} placeholder="Opcional" />
               <label className="field-label">Total pagado (€)</label><input className="text-input" type="number" min="0" step="0.01" value={purchaseTotal} onChange={(e) => setPurchaseTotal(e.target.value)} placeholder="Se calcula si indicas precio por envase" />
               <label className="field-label">Establecimiento</label><input className="text-input" value={purchaseStore} onChange={(e) => setPurchaseStore(e.target.value)} maxLength={120} placeholder="Supermercado" />
-              <button className="add-button" type="submit" disabled={busy}>Guardar compra</button>
+              <button className="add-button" type="submit" disabled={busy || !online}>Guardar compra</button>
             </form>
           </section>
         </div>
