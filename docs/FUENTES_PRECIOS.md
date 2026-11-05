@@ -41,7 +41,7 @@ Referencias técnicas no oficiales:
 ### OpenCesta — fuente principal inicial para Mercadona (ODbL 1.0)
 
 - Publica snapshots diarios en Parquet y un catálogo de Mercadona por zonas. En la release del 4 de noviembre de 2026 declara las zonas `vlc1`, `mad1`, `bcn1` y `alc1`.
-- El listado general contiene nombre, categoría, SKU, precio de venta, precio de referencia por kg/litro/unidad, formato y URL del producto. EAN y marca no están disponibles en todas las filas del snapshot general; se enriquecen por separado.
+- El listado general contiene nombre, categoría, SKU, precio de venta, precio de referencia por kg/litro/unidad, formato y URL del producto. El asset adicional `catalog-mercadona.parquet` aporta EAN, marca, origen, envase y denominación legal. El importador los cruza por SKU: en la release validada del 4 de noviembre de 2026 se enriquecieron 4.375 de 4.379 referencias (99,9 %); la cobertura puede variar en futuras capturas.
 - Mi Compra consumirá el dataset ya publicado por OpenCesta; no ejecutará su propio rastreador de Mercadona ni consultará sus endpoints internos.
 - El dataset se distribuye bajo ODbL 1.0. Las tablas importadas se mantienen separadas, con atribución visible y lectura pública; no se mezclan con fuentes de licencia incompatible.
 - La zona `vlc1` se usa como primera zona de prueba para Castellón, pero no se afirmará que equivale a cada tienda física ni que el código postal 12006 está confirmado hasta verificar la correspondencia logística.

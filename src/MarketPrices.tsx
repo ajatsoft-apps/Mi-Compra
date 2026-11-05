@@ -15,6 +15,10 @@ type MarketPrice = {
   sku: string
   product_name: string
   brand: string | null
+  ean: string | null
+  origin: string | null
+  packaging: string | null
+  legal_name: string | null
   category: string
   subcategory: string
   unit_price: number
@@ -89,7 +93,7 @@ export default function MarketPrices({ onBack }: Props) {
     const pattern = '%' + term.replace(/[\\%_]/g, '\\$&') + '%'
     const { data, error: searchError } = await supabase
       .from('market_price_observations')
-      .select('sku,product_name,brand,category,subcategory,unit_price,reference_price,reference_format,is_discounted,product_url')
+      .select('sku,product_name,brand,ean,origin,packaging,legal_name,category,subcategory,unit_price,reference_price,reference_format,is_discounted,product_url')
       .eq('snapshot_id', snapshot.id)
       .ilike('product_name', pattern)
       .order('product_name', { ascending: true })
@@ -139,6 +143,9 @@ export default function MarketPrices({ onBack }: Props) {
                 <div className="market-result-main">
                   <strong>{product.product_name}</strong>
                   <span>{[product.brand, product.category, product.subcategory].filter(Boolean).join(' · ')}</span>
+                  {product.ean && <small>EAN: {product.ean}</small>}
+                  {product.origin && <small>Origen: {product.origin}</small>}
+                  {product.packaging && <small>Envase: {product.packaging}</small>}
                   {product.is_discounted && <small className="market-price-reduced">Precio rebajado según la fuente</small>}
                   {product.product_url && <a href={product.product_url} target="_blank" rel="noreferrer">Ver producto en Mercadona</a>}
                 </div>
