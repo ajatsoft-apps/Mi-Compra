@@ -211,3 +211,29 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .account-page-grid { grid-template-columns: 1fr; gap: 12px; }
   .account-page-card, .account-page-card:nth-child(3) { grid-column: auto; padding: 19px 17px; }
 }
+
+.household-management-card h2 { margin: 2px 0 0; color: #334338; font: 800 19px Manrope, sans-serif; }
+.management-list { list-style: none; margin: 14px 0 0; padding: 0; }
+.management-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #edf0ea; }
+.management-person { min-width: 0; flex: 1; }
+.management-person strong, .management-person span { display: block; overflow-wrap: anywhere; }
+.management-person strong { color: #435247; font-size: 11px; }
+.management-person span { margin-top: 4px; color: #98a298; font-size: 10px; line-height: 1.45; }
+.role-pill { flex: 0 0 auto; padding: 5px 8px; border-radius: 20px; background: #f2f5ef; color: #748174; font-size: 9px; font-weight: 700; }
+.owner-role { background: #eaf3e6; color: #477a55; }
+.management-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 9px; }
+.management-link, .management-remove { border: 0; background: transparent; padding: 6px 0; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.management-link { color: #527d58; }
+.management-remove { color: #b45e50; }
+.management-link:disabled, .management-remove:disabled { opacity: .45; cursor: not-allowed; }
+.management-subheading { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; padding-top: 17px; border-top: 1px solid #edf0ea; }
+.management-subheading h3 { margin: 0; color: #455448; font: 800 14px Manrope, sans-serif; }
+.management-subheading span { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 20px; background: #eff4eb; color: #55785a; font-size: 10px; font-weight: 700; }
+.management-empty { margin: 14px 0 0; color: #9aa49a; font-size: 11px; line-height: 1.5; }
+.invite-management-list { margin-top: 5px; }
+@media (max-width: 430px) {
+  .management-row { align-items: flex-start; gap: 8px; }
+  .management-actions { flex-direction: column; align-items: flex-end; gap: 3px; }
+  .management-link, .management-remove { padding: 3px 0; }
+}
+
