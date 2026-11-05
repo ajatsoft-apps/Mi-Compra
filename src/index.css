@@ -367,3 +367,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .item-price { min-width: 62px; }
   .item-price strong { font-size: 11px; }
 }
+
+.list-heading-actions { display: flex; align-items: center; gap: 10px; }
+.export-control { position: relative; }
+.export-button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #e2e9df; border-radius: 11px; background: #fff; color: #58745a; cursor: pointer; }
+.export-button svg { width: 19px; height: 19px; }
+.export-button:hover, .export-button:focus-visible { outline: none; border-color: #a9c1a7; background: #f1f6ee; }
+.export-menu { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; display: grid; gap: 3px; width: 190px; padding: 6px; border: 1px solid #e5ebe2; border-radius: 12px; background: #fff; box-shadow: 0 12px 30px #253b2920; }
+.export-menu button { width: 100%; padding: 10px 9px; border: 0; border-radius: 8px; background: transparent; color: #455849; font: 600 11px 'DM Sans', sans-serif; text-align: left; cursor: pointer; }
+.export-menu button:hover, .export-menu button:focus-visible { outline: none; background: #f1f6ee; }
+.export-feedback { margin: -4px 0 12px; color: #648267; font-size: 10px; line-height: 1.5; }
+html, body, #root { touch-action: pan-x pan-y; }
