@@ -551,3 +551,75 @@ button { touch-action:manipulation; }
   .market-result-price { min-width:68px; }
   .market-result-price strong { font-size:14px; }
 }
+
+
+/* Mobile typography: improve readability across the whole app */
+@media (max-width:760px) {
+  .brand strong { font-size:17px; }
+  .brand small { font-size:11px; }
+  .account-button { font-size:13px; }
+  .welcome h1 { font-size:28px; }
+  .summary-card strong { font-size:21px; }
+  .summary-card div span { font-size:12px; }
+  .list-heading h2 { font-size:20px; }
+  .list-heading .eyebrow, .welcome .eyebrow { font-size:11px; }
+  .mobile-add-trigger { font-size:13px; }
+  .filter-tab { font-size:14px; }
+  .filter-tab span { font-size:11px; }
+  .shopping-item { min-height:78px; }
+  .item-details strong { font-size:16px; line-height:1.3; }
+  .item-details span { font-size:12px; line-height:1.35; }
+  .item-price strong { font-size:13px; }
+  .item-price small { font-size:11px; }
+  .list-total > div span { font-size:12px; }
+  .list-total > div strong { font-size:21px; }
+  .list-total > small { font-size:11px; }
+  .empty-state strong { font-size:16px; }
+  .empty-state p { font-size:13px; }
+  .list-footnote { font-size:11px; line-height:1.55; }
+  .add-panel .panel-heading h2 { font-size:23px; }
+  .add-panel .eyebrow { font-size:11px; }
+  .add-panel .field-label { font-size:14px; }
+  .add-panel .text-input { font-size:16px; }
+  .add-panel .category-chip { font-size:13px; }
+  .add-panel .add-button { font-size:16px; }
+  .app-footer { font-size:11px; }
+  .account-page-heading h1 { font-size:30px; }
+  .account-page-heading > p:last-child { font-size:14px; }
+  .back-to-list { font-size:13px; }
+  .account-page-card .auth-heading h2, .household-management-card h2 { font-size:19px; }
+  .account-page-card .field-label, .account-page-card .auth-note,
+  .management-empty, .management-person span { font-size:13px; }
+  .management-person strong { font-size:14px; }
+  .role-pill { font-size:11px; }
+  .management-link, .management-remove { font-size:12px; }
+  .sync-details > div, .sync-details strong { font-size:12px; }
+  .catalog-actions button { font-size:12px; }
+  .catalog-tabs button { font-size:13px; }
+  .catalog-equivalence-row { font-size:12px; }
+  .market-price-status span { font-size:12px; }
+  .market-price-status strong { font-size:14px; }
+  .market-result-main strong { font-size:14px; }
+  .market-result-main span, .market-result-main small { font-size:12px; }
+  .market-result-main a { font-size:12px; }
+  .market-result-price strong { font-size:17px; }
+  .market-result-price span, .market-price-reduced { font-size:12px; }
+  .market-price-disclaimer { font-size:12px; }
+  .optimizer-total span { font-size:13px; }
+  .optimizer-total small { font-size:12px; }
+  .store-tab { font-size:13px; }
+  .store-tab-count { font-size:11px; }
+  .product-suggestion { min-height:64px; }
+  .suggestion-copy strong { font-size:13px; }
+  .suggestion-copy small { font-size:11px; }
+  .suggestion-price { font-size:14px; }
+  .autocomplete-status, .autocomplete-fallback-note { font-size:12px; }
+  .market-search-card .field-label { font-size:13px; }
+}
+@media (max-width:390px) {
+  .welcome h1 { font-size:27px; }
+  .mobile-add-trigger { font-size:12px; }
+  .item-details strong { font-size:15px; }
+  .item-price strong { font-size:12px; }
+  .market-result-main strong { font-size:13px; }
+}
