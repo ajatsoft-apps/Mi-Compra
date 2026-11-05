@@ -739,3 +739,45 @@ button { touch-action:manipulation; }
   .suggestion-copy small { font-size:14px; }
   .suggestion-price { font-size:14px; }
 }
+
+
+/* Small final readability increase for mobile screens */
+@media (max-width:760px) {
+  body { font-size:18px; }
+  .brand strong { font-size:19px; }
+  .brand small, .list-heading .eyebrow, .welcome .eyebrow { font-size:13px; }
+  .welcome p, .welcome > div > p:not(.eyebrow) { font-size:17px; }
+  .summary-card div span, .filter-tab span, .store-tab-count { font-size:13px; }
+  .item-details strong { font-size:19px; }
+  .item-details span { font-size:16px; }
+  .item-price strong { font-size:16px; }
+  .item-price small, .list-total > div span, .list-total > small { font-size:14px; }
+  .empty-state p, .list-footnote { font-size:14px; }
+  .suggestion-copy strong { font-size:18px; }
+  .suggestion-copy small { font-size:15px; }
+  .suggestion-price { font-size:16px; }
+  .suggestion-image { width:90px; height:90px; }
+  .product-suggestion {
+    grid-template-columns:40px 90px minmax(0,1fr) auto;
+    min-height:110px;
+  }
+  .add-panel .field-label, .account-page-card .field-label,
+  .account-page-card .auth-note, .management-empty,
+  .management-person span { font-size:16px; }
+  .catalog-actions button, .catalog-tabs button { font-size:16px; }
+  .market-result-main strong { font-size:17px; }
+  .market-result-main span, .market-result-main small { font-size:15px; }
+  .market-result-price strong { font-size:20px; }
+  .market-result-price span, .market-price-reduced, .market-price-disclaimer { font-size:15px; }
+}
+@media (max-width:390px) {
+  .item-details strong { font-size:18px; }
+  .product-suggestion {
+    grid-template-columns:36px 80px minmax(0,1fr);
+    min-height:102px;
+  }
+  .suggestion-image { width:80px; height:80px; }
+  .suggestion-copy strong { font-size:17px; }
+  .suggestion-copy small { font-size:15px; }
+  .suggestion-price { font-size:15px; }
+}
