@@ -21,6 +21,9 @@ PAGES = {
     "next_weekend": "https://www.lidl.es/c/store/super-finde-proxima-semana/a10089609",
     "food_category": "https://www.lidl.es/c/alimentacion/s10068374",
     "fresh_produce_category": "https://www.lidl.es/c/frescos-frutas-y-verduras/s10089404",
+    "fresh_fish_category": "https://www.lidl.es/c/frescos-pescado/s10089403",
+    "fresh_meat_category": "https://www.lidl.es/c/frescos-carne/s10089402",
+    "bakery_category": "https://www.lidl.es/c/panaderia/s10094507",
 }
 OUTPUT = Path("lidl-food-page-probe.json")
 USER_AGENT = (
