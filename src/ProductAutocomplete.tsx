@@ -106,12 +106,14 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
       const pattern = '%' + searchTerm.replace(/[\\%_]/g, '\\$&') + '%'
       try {
         if (!snapshotCache.current) {
+          const minimumDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
           snapshotCache.current = Promise.all([
             db.from('market_price_snapshots')
               .select('id')
               .eq('source', 'opencesta')
               .eq('chain', 'mercadona')
               .eq('zone', 'vlc1')
+              .gte('captured_at', minimumDate)
               .order('captured_at', { ascending: false })
               .limit(1)
               .maybeSingle(),
