@@ -354,6 +354,7 @@ class PaginationLinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.pagination_depth = 0
+        self.container_stack: list[tuple[str, bool]] = []
         self.links: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -361,10 +362,14 @@ class PaginationLinkParser(HTMLParser):
         classes = values.get("class", "").casefold()
         aria = values.get("aria-label", "").casefold()
         rel = values.get("rel", "").casefold()
-        if tag in {"nav", "ul", "ol", "div"} and (
+        is_container_tag = tag in {"nav", "ul", "ol", "div"}
+        is_pagination = is_container_tag and (
             "pagination" in classes or "paginator" in classes or "pagination" in aria
-        ):
-            self.pagination_depth += 1
+        )
+        if is_container_tag:
+            self.container_stack.append((tag, is_pagination))
+            if is_pagination:
+                self.pagination_depth += 1
         href = values.get("href", "").strip()
         is_next = "next" in rel or "siguiente" in aria or "next" in aria
         is_page_url = bool(re.search(r"(?:[?&](?:page|p|offset|start)=|/page/|/pagina/)", href, re.I))
@@ -372,8 +377,12 @@ class PaginationLinkParser(HTMLParser):
             self.links.append(href)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in {"nav", "ul", "ol", "div"} and self.pagination_depth:
-            self.pagination_depth -= 1
+        for index in range(len(self.container_stack) - 1, -1, -1):
+            if self.container_stack[index][0] == tag:
+                removed = self.container_stack[index:]
+                self.container_stack = self.container_stack[:index]
+                self.pagination_depth -= sum(1 for _, is_pagination in removed if is_pagination)
+                break
 
 
 def resolve_price_region(product: dict[str, Any], region_name: str) -> str | None:
