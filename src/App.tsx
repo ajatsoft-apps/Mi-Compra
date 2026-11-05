@@ -24,6 +24,66 @@ const firstEnabledStore: Exclude<ShoppingStore, 'general'> = 'lidl'
 const storeLabels: Record<ShoppingStore, string> = { lidl: 'Lidl', mercadona: 'Mercadona', general: 'Otros' }
 const euroCurrency = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
 
+function pdfHex(value: string): string {
+  return Array.from(value).map((character) => {
+    const code = character.codePointAt(0) ?? 63
+    const byte = code === 0x20ac ? 0x80 : code <= 0xff ? code : 0x3f
+    return byte.toString(16).padStart(2, '0')
+  }).join('').toUpperCase()
+}
+
+function createShoppingListPdf(title: string, items: ShoppingItem[]): Blob {
+  const date = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })
+  const priced = items.filter((item) => item.unitPrice != null && Number.isFinite(item.unitPrice) && item.unitPrice >= 0)
+  const missing = items.length - priced.length
+  const total = priced.reduce((sum, item) => sum + (item.unitPrice ?? 0) * item.quantity, 0)
+  const lines = [
+    'MI COMPRA - ' + title.toLocaleUpperCase('es'),
+    'Generada el ' + date,
+    '',
+    ...items.flatMap((item) => {
+      const amount = item.unitPrice == null ? 'Sin precio' : euroCurrency.format(item.unitPrice * item.quantity)
+      const status = item.completed ? '[COMPRADO]' : '[PENDIENTE]'
+      const detail = [String(item.quantity) + ' ' + item.unit, item.unitPrice == null ? '' : euroCurrency.format(item.unitPrice) + ' / ' + item.unit, amount, status].filter(Boolean).join(' | ')
+      return [item.name, '  ' + detail, ...(item.note ? ['  Nota: ' + item.note] : [])]
+    }),
+    '',
+    'TOTAL ESTIMADO: ' + euroCurrency.format(total),
+    missing ? missing + ' producto(s) sin precio. Total parcial.' : 'Todos los productos tienen precio.',
+    'Los precios son orientativos y pueden variar en tienda.',
+  ]
+  const pages: string[][] = []
+  for (let index = 0; index < lines.length; index += 48) pages.push(lines.slice(index, index + 48))
+  if (pages.length === 0) pages.push(['La lista está vacía.'])
+  const objects: string[] = []
+  const pageIds = pages.map((_, index) => 4 + index * 2)
+  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>'
+  objects[2] = '<< /Type /Pages /Kids [' + pageIds.map((id) => id + ' 0 R').join(' ') + '] /Count ' + pages.length + ' >>'
+  objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
+  pages.forEach((pageLines, index) => {
+    const pageId = pageIds[index]
+    const contentId = pageId + 1
+    const commands = pageLines.map((line, lineIndex) => {
+      const fontSize = lineIndex === 0 ? 16 : 10
+      const y = 790 - lineIndex * 15
+      return 'BT /F1 ' + fontSize + ' Tf 48 ' + y + ' Td <' + pdfHex(line) + '> Tj ET'
+    }).join('\n')
+    objects[pageId] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ' + contentId + ' 0 R >>'
+    objects[contentId] = '<< /Length ' + commands.length + ' >>\nstream\n' + commands + '\nendstream'
+  })
+  let pdf = '%PDF-1.4\n'
+  const offsets = [0]
+  for (let id = 1; id < objects.length; id++) {
+    offsets[id] = new TextEncoder().encode(pdf).length
+    pdf += id + ' 0 obj\n' + objects[id] + '\nendobj\n'
+  }
+  const xrefOffset = new TextEncoder().encode(pdf).length
+  pdf += 'xref\n0 ' + objects.length + '\n0000000000 65535 f \n'
+  for (let id = 1; id < objects.length; id++) pdf += String(offsets[id]).padStart(10, '0') + ' 00000 n \n'
+  pdf += 'trailer\n<< /Size ' + objects.length + ' /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF'
+  return new Blob([new TextEncoder().encode(pdf)], { type: 'application/pdf' })
+}
+
 const categoryIcons: Record<Category, string> = {
   'Fruta y verdura': '🥑',
   Lácteos: '🥛',
@@ -77,6 +137,8 @@ function App() {
   const [category, setCategory] = useState<Category>('Otros')
   const [note, setNote] = useState('')
   const [price, setPrice] = useState('')
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exportFeedback, setExportFeedback] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
   const [selectedStore, setSelectedStore] = useState<ShoppingStore>(firstEnabledStore)
   const [accountScreenOpen, setAccountScreenOpen] = useState(false)
@@ -346,6 +408,67 @@ function App() {
     })
     return filtered.sort((a, b) => Number(a.completed) - Number(b.completed) || b.createdAt - a.createdAt)
   }, [storeItems, filter])
+  const exportText = useMemo(() => {
+    const lines = ['Mi Compra · ' + storeLabels[selectedStore], new Date().toLocaleString('es-ES'), '']
+    for (const item of storeItems) {
+      const amount = item.unitPrice == null ? 'Sin precio' : euroCurrency.format(item.unitPrice * item.quantity)
+      lines.push((item.completed ? '✓' : '○') + ' ' + item.name + ' — ' + item.quantity + ' ' + item.unit + ' — ' + amount)
+      if (item.note) lines.push('  ' + item.note)
+    }
+    lines.push('', 'Total estimado: ' + euroCurrency.format(storeEstimatedTotal))
+    if (storeMissingPriceCount > 0) lines.push('Total parcial: ' + storeMissingPriceCount + ' producto(s) sin precio.')
+    return lines.join('\n')
+  }, [selectedStore, storeItems, storeEstimatedTotal, storeMissingPriceCount])
+
+  function downloadShoppingPdf() {
+    const blob = createShoppingListPdf(storeLabels[selectedStore], storeItems)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'mi-compra-' + selectedStore + '-' + new Date().toISOString().slice(0, 10) + '.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500)
+    setExportFeedback('PDF preparado para guardar.')
+    setExportMenuOpen(false)
+  }
+
+  async function shareShoppingPdf() {
+    const file = new File([createShoppingListPdf(storeLabels[selectedStore], storeItems)], 'mi-compra-' + selectedStore + '.pdf', { type: 'application/pdf' })
+    try {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: 'Mi Compra · ' + storeLabels[selectedStore], files: [file] })
+        setExportFeedback('PDF compartido.')
+      } else {
+        downloadShoppingPdf()
+        setExportFeedback('No se pueden compartir archivos directamente en este navegador. Guarda el PDF y compártelo desde Archivos.')
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
+      setExportFeedback('No se pudo abrir el menú para compartir el PDF.')
+    }
+    setExportMenuOpen(false)
+  }
+
+  async function shareShoppingText() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Mi Compra · ' + storeLabels[selectedStore], text: exportText })
+        setExportFeedback('Lista compartida.')
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(exportText)
+        setExportFeedback('Lista copiada. Ya puedes pegarla donde quieras.')
+      } else {
+        setExportFeedback('Este navegador no permite compartir texto directamente.')
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
+      setExportFeedback('No se pudo compartir la lista.')
+    }
+    setExportMenuOpen(false)
+  }
+
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1033,8 +1156,22 @@ function App() {
           <section className="panel list-panel">
             <div className="list-heading">
               <div><p className="eyebrow">LISTA POR SUPERMERCADO</p><h2>{storeLabels[selectedStore]} <span className="item-count">{storePendingCount}</span></h2></div>
-              <span className="list-icon">🛒</span>
+              <div className="list-heading-actions">
+                <span className="list-icon">🛒</span>
+                <div className="export-control">
+                  <button type="button" className="export-button" aria-label="Exportar lista" aria-expanded={exportMenuOpen} onClick={() => { setExportMenuOpen((open) => !open); setExportFeedback('') }}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                  </button>
+                  {exportMenuOpen && <div className="export-menu" role="menu" aria-label="Opciones de exportación">
+                    <button type="button" role="menuitem" onClick={downloadShoppingPdf}>Guardar como PDF</button>
+                    <button type="button" role="menuitem" onClick={() => void shareShoppingPdf()}>Compartir PDF</button>
+                    <button type="button" role="menuitem" onClick={() => void shareShoppingText()}>Compartir como texto</button>
+                    <button type="button" role="menuitem" onClick={async () => { try { await navigator.clipboard.writeText(exportText); setExportFeedback('Lista copiada al portapapeles.') } catch { setExportFeedback('No se pudo copiar el texto.') } setExportMenuOpen(false) }}>Copiar texto</button>
+                  </div>}
+                </div>
+              </div>
             </div>
+            {exportFeedback && <p className="export-feedback" role="status">{exportFeedback}</p>}
             <div className="store-tabs" role="tablist" aria-label="Listas de compra">
               {(['lidl', 'mercadona', 'general'] as ShoppingStore[]).map((store) => (
                 <button key={store} type="button" role="tab" aria-selected={selectedStore === store} className={selectedStore === store ? 'store-tab active' : 'store-tab'} onClick={() => setSelectedStore(store)}>
