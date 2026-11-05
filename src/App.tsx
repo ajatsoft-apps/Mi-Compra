@@ -808,6 +808,40 @@ function App() {
   }
 
 
+  function addLidlOfferToBasket(productName: string, unitPrice: number | null) {
+    const cleanName = productName.trim()
+    if (!cleanName) return
+    const now = Date.now()
+    const newItem: ShoppingItem = {
+      id: createItemId(),
+      householdId: household.id,
+      listId: list.id,
+      name: cleanName,
+      quantity: 1,
+      unit: 'ud.',
+      category: 'Otros',
+      note: 'Oferta Lidl',
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      catalogProductId: null,
+      supermarket: 'lidl',
+      unitPrice,
+    }
+    setItems((current) => {
+      const existing = current.find((item) => canMergeShoppingItems(item, newItem))
+      const next = existing
+        ? current.map((item) => item.id === existing.id
+          ? { ...item, quantity: item.quantity + 1, unitPrice: item.unitPrice ?? unitPrice, updatedAt: now }
+          : item)
+        : [newItem, ...current]
+      itemsRef.current = next
+      return next
+    })
+    setLidlOffersOpen(false)
+  }
+
   async function addCatalogProductToList(product: CatalogProduct) {
     const now = Date.now()
     const format = product.format_quantity ? product.format_quantity + ' ' + product.format_unit : ''
@@ -1057,7 +1091,7 @@ function App() {
         ) : marketPricesOpen ? (
           <MarketPrices onBack={() => setMarketPricesOpen(false)} />
         ) : lidlOffersOpen ? (
-          <LidlOffers online={isOnline} onBack={() => setLidlOffersOpen(false)} />
+          <LidlOffers online={isOnline} onBack={() => setLidlOffersOpen(false)} onAddToBasket={addLidlOfferToBasket} />
         ) : catalogScreenOpen ? (
           session && hasRemoteHousehold && !syncDisconnected ? (
             <ProductCatalog householdId={household.id} userId={session.user.id} online={isOnline} onBack={() => setCatalogScreenOpen(false)} onAddToList={addCatalogProductToList} />
@@ -1319,7 +1353,7 @@ function App() {
             ) : (
               <ul className="shopping-list">
                 {visibleItems.map((item) => (
-                  <li className={item.completed ? 'shopping-item completed' : 'shopping-item'} key={item.id}>
+                  <li className={['shopping-item', item.completed ? 'completed' : '', item.supermarket === 'lidl' ? 'lidl' : item.supermarket === 'mercadona' ? 'mercadona' : ''].filter(Boolean).join(' ')} key={item.id}>
                     <button className="check-button" type="button" onClick={() => toggleItem(item.id)} aria-label={item.completed ? `Marcar ${item.name} como pendiente` : `Marcar ${item.name} como comprado`} aria-pressed={item.completed}>{item.completed ? '✓' : ''}</button>
                     <span className="item-category-icon" aria-hidden="true">{categoryIcons[item.category]}</span>
                     <div className="item-details">
