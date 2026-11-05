@@ -2,6 +2,12 @@ name: Importar precios de Mercadona (OpenCesta)
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/import_opencesta.py"
+      - ".github/workflows/import-opencesta.yml"
   schedule:
     - cron: "30 16 * * *"
 
@@ -27,7 +33,24 @@ jobs:
         run: python -m pip install --disable-pip-version-check polars requests
       - name: Validar script
         run: python -m py_compile scripts/import_opencesta.py
+      - name: Descargar y validar snapshot publicado
+        env:
+          MERCADONA_ZONE: vlc1
+        run: python scripts/import_opencesta.py --dry-run
+      - name: Comprobar credenciales de Supabase
+        id: supabase
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Falta SUPABASE_SERVICE_ROLE_KEY; se ha validado el origen, pero no se publica el snapshot."
+          fi
       - name: Importar último catálogo de Mercadona
+        if: github.event_name != 'pull_request' && steps.supabase.outputs.ready == 'true'
         env:
           SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
