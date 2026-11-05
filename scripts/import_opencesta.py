@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import os
 import pathlib
@@ -167,13 +168,14 @@ def import_snapshot(tag: str, release_url: str, captured_at: str, rows: list[dic
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Importa el snapshot diario de Mercadona desde OpenCesta.")
+    parser.add_argument("--dry-run", action="store_true", help="Descarga y valida el Parquet sin modificar Supabase.")
+    args = parser.parse_args()
+
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-    if not supabase_url or not service_key:
+    if not args.dry_run and (not supabase_url or not service_key):
         raise RuntimeError("Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el entorno.")
-
-    stale_before = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=2)).isoformat()
-    supabase_request("DELETE", "market_price_staging", service_key, params={"created_at": f"lt.{stale_before}"})
 
     tag, download_url, release_url = latest_release()
     print(f"OpenCesta release: {tag}")
@@ -192,7 +194,13 @@ def main() -> None:
         parquet_path = latest_zone_snapshot(extracted)
         frame = pl.read_parquet(parquet_path)
         captured_at, rows = normalize_rows(frame)
-        print(f"Snapshot {CHAIN}/{ZONE} · {captured_at} · {len(rows)} productos")
+        print(f"Snapshot {CHAIN}/{ZONE} · {captured_at} · {len(rows)} productos · validación correcta")
+        if args.dry_run:
+            print("Dry run: no se ha modificado Supabase.")
+            return
+
+        stale_before = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=2)).isoformat()
+        supabase_request("DELETE", "market_price_staging", service_key, params={"created_at": f"lt.{stale_before}"})
         import_snapshot(tag, release_url, captured_at, rows, service_key)
 
 
