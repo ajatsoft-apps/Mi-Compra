@@ -626,6 +626,9 @@ def crawl_food_searches(captured_at: str) -> tuple[dict[str, dict[str, Any]], di
                 row = parse_online_product(as_dict(item), captured_at)
                 if not row or not is_food_product(row):
                     continue
+                row["source"] = "weekly"
+                row["source_page"] = "food_search_" + term
+                row["price_type"] = "regular" if row["unit_price"] is not None else "no_price"
                 accepted += 1
                 key = row["product_id"]
                 previous = products.get(key)
