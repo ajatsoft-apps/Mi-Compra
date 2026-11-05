@@ -347,6 +347,35 @@ class ProductAttributeParser(HTMLParser):
                     self.products.append(parsed)
 
 
+
+class PaginationLinkParser(HTMLParser):
+    """Find pagination URLs without following unrelated content links."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.pagination_depth = 0
+        self.links: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = {name.lower(): value or "" for name, value in attrs}
+        classes = values.get("class", "").casefold()
+        aria = values.get("aria-label", "").casefold()
+        rel = values.get("rel", "").casefold()
+        if tag in {"nav", "ul", "ol", "div"} and (
+            "pagination" in classes or "paginator" in classes or "pagination" in aria
+        ):
+            self.pagination_depth += 1
+        href = values.get("href", "").strip()
+        is_next = "next" in rel or "siguiente" in aria or "next" in aria
+        is_page_url = bool(re.search(r"(?:[?&](?:page|p|offset|start)=|/page/|/pagina/)", href, re.I))
+        if href and (is_next or is_page_url or (self.pagination_depth and tag == "a")):
+            self.links.append(href)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"nav", "ul", "ol", "div"} and self.pagination_depth:
+            self.pagination_depth -= 1
+
+
 def resolve_price_region(product: dict[str, Any], region_name: str) -> str | None:
     regions = as_dict(product.get("regionsV2"))
     target = normalized_text(region_name)
