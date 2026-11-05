@@ -58,6 +58,7 @@ function App() {
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [householdName, setHouseholdName] = useState('Mi casa')
   const [createdInvite, setCreatedInvite] = useState('')
   const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
@@ -177,8 +178,21 @@ function App() {
         ? 'Sincronización actualizada; enviando los últimos cambios locales.'
         : 'Cambios guardados y sincronizados.')
     } catch (error) {
-      setSyncState(disconnectedAfterSync ? 'local' : pausedAfterSync ? 'paused' : navigator.onLine ? 'error' : 'offline')
-      setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.')
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.'
+      if (errorMessage.startsWith('HOUSEHOLD_MEMBERSHIP_REVOKED:')) {
+        try { localStorage.setItem(SYNC_DISCONNECTED_KEY, 'true') } catch { /* El estado se mantiene en memoria. */ }
+        try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La desvinculación prevalece sobre la pausa. */ }
+        setSyncDisconnected(true)
+        setSyncPaused(false)
+        hasInitialSyncRef.current = false
+        lastSyncedSnapshotRef.current = ''
+        setSyncState('local')
+        setSyncMessage('Esta cuenta ya no pertenece a este hogar. Puedes crear uno nuevo o introducir un código de invitación.')
+        try { await saveActiveWorkspace(workspaceRef.current.household, workspaceRef.current.list, false) } catch { /* La lista local se conserva. */ }
+      } else {
+        setSyncState(disconnectedAfterSync ? 'local' : pausedAfterSync ? 'paused' : navigator.onLine ? 'error' : 'offline')
+        setSyncMessage(errorMessage)
+      }
     } finally {
       syncInFlightRef.current = false
     }
@@ -298,26 +312,64 @@ function App() {
   }
 
   async function disconnectSync() {
-    if (syncInFlightRef.current) return
-    try { localStorage.setItem(SYNC_DISCONNECTED_KEY, 'true') } catch { /* El estado se mantiene en memoria si el almacenamiento está bloqueado. */ }
-    try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La desconexión prevalece sobre la pausa. */ }
-    setSyncDisconnected(true)
-    setSyncPaused(false)
-    hasInitialSyncRef.current = false
-    lastSyncedSnapshotRef.current = ''
-    setSyncState('local')
-    setSyncMessage('Este dispositivo está desvinculado. La cuenta sigue abierta y los productos se guardan solo aquí.')
-    try { await saveActiveWorkspace(household, list, false) } catch { /* Los datos locales siguen disponibles aunque no se actualice el indicador persistente. */ }
+    if (!supabase || !session || syncInFlightRef.current) return
+    syncInFlightRef.current = true
+    setSyncState('syncing')
+    setSyncMessage('Desvinculando esta cuenta del hogar…')
+    try {
+      const { error } = await supabase.rpc('leave_household', {
+        target_household_id: household.id,
+      })
+      if (error) throw error
+      try { localStorage.setItem(SYNC_DISCONNECTED_KEY, 'true') } catch { /* El estado se mantiene en memoria. */ }
+      try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La desvinculación prevalece sobre la pausa. */ }
+      setSyncDisconnected(true)
+      setSyncPaused(false)
+      hasInitialSyncRef.current = false
+      lastSyncedSnapshotRef.current = ''
+      setSyncState('local')
+      setSyncMessage('Esta cuenta ya no pertenece al hogar. Tus productos se conservan en este dispositivo.')
+      await saveActiveWorkspace(household, list, false)
+    } catch (error) {
+      setSyncState('error')
+      setSyncMessage(error instanceof Error ? error.message : 'No se pudo desvincular la cuenta del hogar.')
+    } finally {
+      syncInFlightRef.current = false
+    }
   }
 
-  function connectSync() {
-    if (!session || !isOnline || syncInFlightRef.current) return
-    try { localStorage.removeItem(SYNC_DISCONNECTED_KEY) } catch { /* La conexión se mantiene en memoria durante esta sesión. */ }
-    try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La conexión explícita también elimina la pausa. */ }
-    setSyncDisconnected(false)
-    setSyncPaused(false)
-    setSyncMessage('Conectando con el hogar…')
-    void runSync(true, false, false)
+  async function createNewHousehold(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase || !session || !isOnline || inviteBusy || !householdName.trim()) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    try {
+      const { data: newHouseholdId, error } = await supabase.rpc('create_household_fresh', {
+        household_name: householdName.trim(),
+      })
+      if (error) throw error
+      if (typeof newHouseholdId !== 'string') throw new Error('Supabase no devolvió el identificador del nuevo hogar.')
+      const nextHousehold: Household = {
+        id: newHouseholdId,
+        name: householdName.trim(),
+        createdAt: Date.now(),
+      }
+      workspaceRef.current = { household: nextHousehold, list }
+      setHousehold(nextHousehold)
+      try { localStorage.removeItem(SYNC_DISCONNECTED_KEY) } catch { /* El estado se mantiene en memoria. */ }
+      try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* El nuevo hogar comienza sincronizando. */ }
+      setSyncDisconnected(false)
+      setSyncPaused(false)
+      hasInitialSyncRef.current = false
+      lastSyncedSnapshotRef.current = ''
+      await saveActiveWorkspace(nextHousehold, list, false)
+      setInviteMessage('Hogar creado. Preparando la lista compartida…')
+      await runSync(true, false, false)
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo crear el hogar.')
+    } finally {
+      setInviteBusy(false)
+    }
   }
 
   async function signOut() {
@@ -362,13 +414,24 @@ function App() {
     setInviteBusy(true)
     setInviteMessage('')
     try {
-      const { error } = await supabase.rpc('accept_household_invite', {
+      const { data: joinedHouseholdId, error } = await supabase.rpc('accept_household_invite', {
         invitation_code: inviteCode.trim(),
       })
       if (error) throw error
+      if (typeof joinedHouseholdId !== 'string') throw new Error('Supabase no devolvió el hogar al que te has unido.')
+      const nextHousehold = { ...workspaceRef.current.household, id: joinedHouseholdId }
+      workspaceRef.current = { household: nextHousehold, list: workspaceRef.current.list }
+      setHousehold(nextHousehold)
       setInviteCode('')
+      try { localStorage.removeItem(SYNC_DISCONNECTED_KEY) } catch { /* El estado se mantiene en memoria. */ }
+      try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* Unirse a un hogar reanuda la sincronización. */ }
+      setSyncDisconnected(false)
+      setSyncPaused(false)
+      hasInitialSyncRef.current = false
+      lastSyncedSnapshotRef.current = ''
+      await saveActiveWorkspace(nextHousehold, workspaceRef.current.list, false)
       setInviteMessage('Te has unido al hogar. Estamos incorporando y sincronizando tu lista.')
-      await runSync()
+      await runSync(true, false, false)
     } catch (error) {
       setInviteMessage(error instanceof Error ? error.message : 'No se pudo aceptar la invitación.')
     } finally {
@@ -481,7 +544,7 @@ function App() {
               <button className="back-to-list" type="button" onClick={() => setAccountScreenOpen(false)}>← Volver a la lista</button>
               <p className="eyebrow">AJUSTES DE MI COMPRA</p>
               <h1>Cuenta y sincronización</h1>
-              <p>Consulta el hogar conectado y decide si este dispositivo comparte la lista.</p>
+              <p>Consulta tu cuenta y decide en qué hogar compartes la lista.</p>
             </div>
             <div className="account-page-grid">
               <section className="account-page-card">
@@ -489,7 +552,7 @@ function App() {
                 {session ? (
                   <>
                     <p className="account-user-email">{session.user.email}</p>
-                    <p className="auth-note">La sesión permanece abierta aunque desconectes la sincronización de este dispositivo.</p>
+                    <p className="auth-note">La sesión permanece abierta aunque desvincules esta cuenta del hogar actual.</p>
                     <button className="auth-switch" type="button" onClick={() => void signOut()}>Cerrar sesión</button>
                   </>
                 ) : (
@@ -524,28 +587,43 @@ function App() {
                       <div><span>Conexión</span><strong>{isOnline ? 'Internet disponible' : 'Sin conexión a Internet'}</strong></div>
                     </div>
                     <div className="account-actions">
-                      {syncDisconnected ? <button className="add-button" type="button" onClick={connectSync} disabled={!isOnline || syncState === 'syncing'}>Conectar con este hogar</button> : (
+                      {!syncDisconnected && (
                         <>
                           <button className="add-button" type="button" onClick={() => void runSync(true)} disabled={!isOnline || syncState === 'syncing'}>{syncState === 'syncing' ? 'Sincronizando…' : 'Sincronizar ahora'}</button>
                           <button className="secondary-action" type="button" onClick={toggleSyncPause} disabled={syncState === 'syncing' && !syncPaused}>{syncPaused ? 'Reanudar sincronización' : 'Pausar temporalmente'}</button>
-                          <button className="danger-action" type="button" onClick={() => void disconnectSync()} disabled={syncState === 'syncing'}>Desvincular este dispositivo</button>
+                          <button className="danger-action" type="button" onClick={() => void disconnectSync()} disabled={syncState === 'syncing'}>Desvincular cuenta de este hogar</button>
                         </>
                       )}
                     </div>
-                    <p className="auth-note">Desvincular detiene el envío y la recepción de cambios solo en este dispositivo. No borra la lista compartida, no elimina tu cuenta y no afecta a los demás miembros. Para volver a compartir, pulsa «Conectar con este hogar».</p>
+                    <p className="auth-note">{syncDisconnected
+                      ? 'Esta cuenta ya no pertenece a este hogar. Los demás miembros pueden seguir utilizándolo y sincronizando con normalidad.'
+                      : 'Desvincular elimina la pertenencia de esta cuenta a este hogar en todos sus dispositivos. Los demás miembros no se ven afectados y la lista compartida se conserva.'}</p>
                   </section>
                   <section className="account-page-card">
-                    <p className="field-label">COMPARTIR HOGAR</p>
-                    <p className="auth-note">Invita a otras personas para compartir la lista o únete a un hogar con un código.</p>
-                    <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy || syncState !== 'synced' || syncDisconnected || syncPaused}>{inviteBusy ? 'Un momento…' : 'Crear código para invitar'}</button>
-                    {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
+                    <p className="field-label">{syncDisconnected ? 'CREAR O ELEGIR HOGAR' : 'COMPARTIR HOGAR'}</p>
+                    <p className="auth-note">{syncDisconnected
+                      ? 'Tu lista permanece en este dispositivo. Puedes crear un hogar nuevo o unirte con un código que te hayan enviado.'
+                      : 'Invita a otras personas para compartir la lista o únete a otro hogar con un código.'}</p>
+                    {!syncDisconnected && (
+                      <>
+                        <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy || syncState !== 'synced' || syncPaused}>{inviteBusy ? 'Un momento…' : 'Crear código para invitar'}</button>
+                        {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
+                      </>
+                    )}
+                    {syncDisconnected && (
+                      <form className="auth-form" onSubmit={createNewHousehold}>
+                        <label className="field-label" htmlFor="new-household-name">Nombre del nuevo hogar</label>
+                        <input id="new-household-name" className="text-input" value={householdName} onChange={(event) => setHouseholdName(event.target.value)} maxLength={80} required />
+                        <button className="add-button" type="submit" disabled={inviteBusy || !isOnline || !householdName.trim()}>{inviteBusy ? 'Creando…' : 'Crear hogar nuevo'}</button>
+                      </form>
+                    )}
                     <form className="auth-form invite-form" onSubmit={acceptHouseholdInvite}>
-                      <label className="field-label" htmlFor="household-invite-code">Código de invitación</label>
+                      <label className="field-label" htmlFor="household-invite-code">Código de invitación recibido</label>
                       <input id="household-invite-code" className="text-input" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código recibido" autoComplete="off" required />
-                      <button className="auth-switch" type="submit" disabled={inviteBusy || syncState !== 'synced' || syncDisconnected || syncPaused || !inviteCode.trim()}>Unirme a un hogar</button>
+                      <button className="auth-switch" type="submit" disabled={inviteBusy || !isOnline || (!syncDisconnected && (syncState !== 'synced' || syncPaused)) || !inviteCode.trim()}>Unirme a un hogar</button>
                     </form>
                     {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
-                    <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>
+                    {!syncDisconnected && <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>}
                   </section>
                 </>
               )}
