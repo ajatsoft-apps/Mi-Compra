@@ -808,7 +808,7 @@ function App() {
   }
 
 
-  function addLidlOfferToBasket(productName: string, unitPrice: number | null) {
+  function addLidlOfferToBasket(productName: string, unitPrice: number | null, productUnit: string) {
     const cleanName = productName.trim()
     if (!cleanName) return
     const now = Date.now()
@@ -818,7 +818,7 @@ function App() {
       listId: list.id,
       name: cleanName,
       quantity: 1,
-      unit: 'ud.',
+      unit: productUnit,
       category: 'Otros',
       note: 'Oferta Lidl',
       completed: false,
