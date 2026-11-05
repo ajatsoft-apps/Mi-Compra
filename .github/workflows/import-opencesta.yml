@@ -1,0 +1,35 @@
+name: Importar precios de Mercadona (OpenCesta)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 16 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: import-opencesta-mercadona
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar lector Parquet
+        run: python -m pip install --disable-pip-version-check polars requests
+      - name: Validar script
+        run: python -m py_compile scripts/import_opencesta.py
+      - name: Importar último catálogo de Mercadona
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADONA_ZONE: vlc1
+        run: python scripts/import_opencesta.py
