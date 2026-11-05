@@ -17,6 +17,7 @@ export type ShoppingItem = {
   deletedAt?: number | null
   catalogProductId?: string | null
   supermarket?: ShoppingStore
+  unitPrice?: number | null
 }
 
 export type Household = {
