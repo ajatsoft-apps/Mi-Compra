@@ -61,14 +61,26 @@ export async function synchronizeWorkspace(
   if (!supabase) throw new Error('Supabase no está configurado en esta instalación.')
   const client = supabase
 
-  const { data: membership, error: membershipError } = await client
-    .from('household_members')
-    .select('household_id, role')
-    .eq('user_id', user.id)
-    .order('joined_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const hasSelectedRemoteHousehold = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(localHousehold.id)
+  const membershipResult = hasSelectedRemoteHousehold
+    ? await client
+      .from('household_members')
+      .select('household_id, role')
+      .eq('user_id', user.id)
+      .eq('household_id', localHousehold.id)
+      .maybeSingle()
+    : await client
+      .from('household_members')
+      .select('household_id, role')
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  const { data: membership, error: membershipError } = membershipResult
   if (membershipError) throw membershipError
+  if (hasSelectedRemoteHousehold && !membership) {
+    throw new Error('HOUSEHOLD_MEMBERSHIP_REVOKED: Esta cuenta ya no pertenece al hogar seleccionado.')
+  }
 
   let household: Household
   if (membership?.household_id) {
