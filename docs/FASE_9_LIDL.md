@@ -29,3 +29,9 @@ The workflow CI ejecuta la sonda únicamente en un pull request cuyo título con
 ## Criterio para avanzar
 
 Solo se planteará una integración de precios si la muestra confirma campos consistentes y suficientes. Para el optimizador, la coincidencia entre cadenas seguirá requiriendo EAN exacto; no se usarán nombres parecidos como sustituto de un código de barras.
+
+## Resultado de la primera ejecución (5 de noviembre de 2026)
+
+GitHub Actions pudo instalar dependencias y compilar la PWA correctamente. La primera consulta a `www.lidl.es/q/api/search` devolvió HTTP 401 Unauthorized desde el runner. No se obtuvo ninguna muestra de productos, por lo que no se han validado precios, categorías ni EAN. La sonda conserva ahora un diagnóstico limitado de la respuesta para facilitar la revisión, pero sigue fallando deliberadamente cuando el origen rechaza la petición.
+
+La política de privacidad de Lidl describe medidas de protección frente a accesos automatizados y CAPTCHA. No se intentará eludir esos controles. La vía directa queda en pausa hasta disponer de un acceso permitido y estable; cualquier proveedor externo requerirá una evaluación separada de coste, cobertura, procedencia y condiciones de uso.
