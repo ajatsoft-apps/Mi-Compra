@@ -22,7 +22,6 @@ type RemoteItem = {
 }
 
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function toTimestamp(value: string | null | undefined, fallback: number): number {
   if (!value) return fallback
@@ -148,13 +147,13 @@ export async function synchronizeWorkspace(
   const pendingWrites: Record<string, unknown>[] = []
 
   for (const sourceItem of localItems) {
+    const remote = remoteById.get(sourceItem.id)
     const item: ShoppingItem = {
       ...sourceItem,
-      id: uuidPattern.test(sourceItem.id) ? sourceItem.id : newLocalId(),
+      id: remote ? sourceItem.id : newLocalId(),
       householdId: household.id,
       listId: list.id,
     }
-    const remote = remoteById.get(item.id)
     const localIsNewer = !remote || item.updatedAt > toTimestamp(remote.updated_at, 0)
     if (!localIsNewer) continue
 
