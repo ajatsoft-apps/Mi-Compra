@@ -597,10 +597,27 @@ def crawl_online_catalog(max_pages: int | None, captured_at: str) -> tuple[dict[
     return products, reported_total, {"passes": pass_stats}
 
 
-def is_food_product(row: dict[str, Any]) -> bool:
+def contains_search_term(text: Any, term: str) -> bool:
+    normalized = normalized_text(text)
+    needle = normalized_text(term).strip()
+    if not normalized or not needle:
+        return False
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(needle) + r"(?![a-z0-9])", normalized))
+
+
+def is_food_product(row: dict[str, Any], search_term: str | None = None) -> bool:
     category = normalized_text(row.get("category"))
+    name = row.get("product_name") or ""
+    description = row.get("description") or ""
+    searchable = normalized_text(str(name) + " " + str(description))
+
+    # Lidl search results can expose numeric category paths such as 0/17/1740/174014.
+    # When that happens, classify using the exact targeted term in the product text.
     if "non-food" in category or "non food" in category:
         return False
+    if search_term and contains_search_term(searchable, search_term):
+        return True
+
     markers = (
         "aliment", "comida", "bebida", "drink", "lact", "leche",
         "fruta", "verdura", "carne", "pescado", "panader", "despensa",
@@ -608,13 +625,13 @@ def is_food_product(row: dict[str, Any]) -> bool:
     )
     if any(marker in category for marker in markers):
         return True
-    return bool(re.search(r"(?:^|[/\s])food(?:$|[/\s])", category))
+    return bool(re.search(r"(?:^|[/\\s])food(?:$|[/\\s])", category))
 
 
 def crawl_food_searches(captured_at: str) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     products: dict[str, dict[str, Any]] = {}
     query_stats: list[dict[str, Any]] = []
-    max_pages_per_term = int(os.getenv("LIDL_FOOD_SEARCH_MAX_PAGES", "2"))
+    max_pages_per_term = int(os.getenv("LIDL_FOOD_SEARCH_MAX_PAGES", "10"))
     for term in FOOD_SEARCH_TERMS:
         offset = 0
         pages = 0
@@ -628,7 +645,7 @@ def crawl_food_searches(captured_at: str) -> tuple[dict[str, dict[str, Any]], di
             seen += len(items)
             for item in items:
                 row = parse_online_product(as_dict(item), captured_at)
-                if not row or not is_food_product(row):
+                if not row or not is_food_product(row, term):
                     continue
                 row["source"] = "weekly"
                 row["source_page"] = "food_search_" + term
