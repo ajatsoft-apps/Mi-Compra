@@ -136,7 +136,7 @@ export default function LidlOffers({ online, onBack }: Props) {
       {!loading && snapshots.length === 0 && !error && (
         <section className="account-page-card">
           <h2>Todavía no hay ofertas importadas</h2>
-          <p className="auth-note">La base de datos ya está preparada. Falta configurar el hogar de destino en los secretos de GitHub y ejecutar la importación de ofertas Lidl.</p>
+          <p className="auth-note">La base de datos está preparada. Las ofertas se cargarán desde el catálogo global en cuanto termine la primera importación.</p>
         </section>
       )}
 
@@ -164,7 +164,7 @@ export default function LidlOffers({ online, onBack }: Props) {
               const snapshot = snapshotsById.get(offer.snapshot_id)
               const priceText = displayedPriceText(offer.price_box)
               return (
-                <li className="market-result-row" key={offer.snapshot_id + ':' + offer.offer_id}>
+                <li className="market-result-row lidl-offer-row" key={offer.snapshot_id + ':' + offer.offer_id}>
                   {offer.image_url && <img src={offer.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 76, height: 76, objectFit: 'contain', borderRadius: 10 }} />}
                   <div className="market-result-main">
                     <strong>{offer.title}</strong>
