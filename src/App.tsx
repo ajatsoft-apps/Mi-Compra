@@ -48,6 +48,10 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false)
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [createdInvite, setCreatedInvite] = useState('')
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const [inviteMessage, setInviteMessage] = useState('')
 
   const workspaceRef = useRef({ household, list })
   const itemsRef = useRef(items)
@@ -276,6 +280,52 @@ function App() {
     }
   }
 
+  async function createHouseholdInvite() {
+    if (!supabase || !session) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    setCreatedInvite('')
+    try {
+      const { data, error } = await supabase.rpc('create_household_invite', {
+        target_household_id: household.id,
+      })
+      if (error) throw error
+      const invitation = Array.isArray(data) ? data[0] : data
+      if (!invitation?.invite_code) throw new Error('Supabase no devolvió un código de invitación.')
+      setCreatedInvite(invitation.invite_code)
+      try {
+        await navigator.clipboard.writeText(invitation.invite_code)
+        setInviteMessage('Código copiado. Compártelo con las personas que quieras añadir al hogar.')
+      } catch {
+        setInviteMessage('Copia el código que aparece abajo y compártelo con tu familia.')
+      }
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo crear la invitación.')
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
+  async function acceptHouseholdInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase || !session || !inviteCode.trim()) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    try {
+      const { error } = await supabase.rpc('accept_household_invite', {
+        invitation_code: inviteCode.trim(),
+      })
+      if (error) throw error
+      setInviteCode('')
+      setInviteMessage('Te has unido al hogar. Estamos incorporando y sincronizando tu lista.')
+      await runSync()
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo aceptar la invitación.')
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
   function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const cleanName = name.trim()
@@ -410,6 +460,27 @@ function App() {
           {syncMessage && <small>{syncMessage}</small>}
           {!session && isSupabaseConfigured && <button type="button" onClick={() => setShowAuth(true)}>Activar sincronización</button>}
         </div>
+
+        {session && (
+          <section className="auth-panel family-panel" aria-label="Compartir hogar">
+            <div className="auth-heading">
+              <div><p className="eyebrow">SINCRONIZACIÓN FAMILIAR</p><h2>Compartir este hogar</h2></div>
+              <span className="auth-lock">⌂</span>
+            </div>
+            <p className="auth-note">Crea un código para que otra persona se una con su propia cuenta, o introduce el código que te hayan enviado. Los cambios de todos aparecerán en la misma lista.</p>
+            <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy}>
+              {inviteBusy ? 'Un momento…' : 'Crear código para invitar'}
+            </button>
+            {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
+            <form className="auth-form invite-form" onSubmit={acceptHouseholdInvite}>
+              <label className="field-label" htmlFor="household-invite-code">Código de invitación</label>
+              <input id="household-invite-code" className="text-input" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código recibido" autoComplete="off" required />
+              <button className="auth-switch" type="submit" disabled={inviteBusy || !inviteCode.trim()}>Unirme a un hogar</button>
+            </form>
+            {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
+            <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>
+          </section>
+        )}
 
         <section className="welcome">
           <div>
