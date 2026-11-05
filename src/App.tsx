@@ -392,6 +392,15 @@ function App() {
     }
   }
 
+  function detachCatalogReferences() {
+    const now = Date.now()
+    const next = itemsRef.current.map((item) => item.catalogProductId
+      ? { ...item, catalogProductId: null, updatedAt: now }
+      : item)
+    itemsRef.current = next
+    setItems(next)
+  }
+
   async function createNewHousehold(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!supabase || !session || !isOnline || inviteBusy || !householdName.trim()) return
@@ -403,6 +412,7 @@ function App() {
       })
       if (error) throw error
       if (typeof newHouseholdId !== 'string') throw new Error('Supabase no devolvió el identificador del nuevo hogar.')
+      detachCatalogReferences()
       const nextHousehold: Household = {
         id: newHouseholdId,
         name: householdName.trim(),
@@ -549,6 +559,7 @@ function App() {
       })
       if (error) throw error
       if (typeof joinedHouseholdId !== 'string') throw new Error('Supabase no devolvió el hogar al que te has unido.')
+      detachCatalogReferences()
       const nextHousehold = { ...workspaceRef.current.household, id: joinedHouseholdId }
       workspaceRef.current = { household: nextHousehold, list: workspaceRef.current.list }
       setHousehold(nextHousehold)
