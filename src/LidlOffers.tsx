@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './data/supabaseClient'
 
-type Props = { householdId: string; online: boolean; onBack: () => void }
+type Props = { online: boolean; onBack: () => void }
 type Snapshot = {
   id: string
   store_key: string
@@ -42,7 +42,7 @@ function displayedPriceText(value: Record<string, unknown> | null): string {
   return parts.join(' ')
 }
 
-export default function LidlOffers({ householdId, online, onBack }: Props) {
+export default function LidlOffers({ online, onBack }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [offers, setOffers] = useState<Offer[]>([])
   const [query, setQuery] = useState('')
@@ -69,7 +69,6 @@ export default function LidlOffers({ householdId, online, onBack }: Props) {
         const { data: snapshotData, error: snapshotError } = await supabase
           .from('lidl_offer_snapshots')
           .select('id,store_key,store_name,store_postal_code,captured_on,captured_at,row_count')
-          .eq('household_id', householdId)
           .order('captured_at', { ascending: false })
           .limit(30)
         if (snapshotError) throw snapshotError
@@ -88,7 +87,6 @@ export default function LidlOffers({ householdId, online, onBack }: Props) {
         const { data: offerData, error: offerError } = await supabase
           .from('lidl_offer_observations')
           .select('snapshot_id,offer_id,title,brand,category,offer_type,redemption_channel,product_ids,start_validity_date,end_validity_date,price_box,image_url')
-          .eq('household_id', householdId)
           .in('snapshot_id', latest.map((snapshot) => snapshot.id))
           .order('title', { ascending: true })
           .limit(500)
@@ -102,7 +100,7 @@ export default function LidlOffers({ householdId, online, onBack }: Props) {
     }
     void loadOffers()
     return () => { active = false }
-  }, [householdId, online])
+  }, [online])
 
   const snapshotsById = useMemo(() => new Map(snapshots.map((snapshot) => [snapshot.id, snapshot])), [snapshots])
   const visibleOffers = useMemo(() => {
@@ -122,7 +120,7 @@ export default function LidlOffers({ householdId, online, onBack }: Props) {
         <button className="back-to-list" type="button" onClick={onBack}>← Volver a la lista</button>
         <p className="eyebrow">OFERTAS SEMANALES · LIDL</p>
         <h1>Ofertas Lidl</h1>
-        <p>Promociones obtenidas del feed Lidl Plus y guardadas para este hogar. No representan un catálogo completo ni garantizan existencias.</p>
+        <p>Promociones obtenidas del feed Lidl Plus y compartidas en Mi Compra, independientemente del hogar. No representan un catálogo completo ni garantizan existencias.</p>
       </div>
 
       {loading ? <p className="auth-note">Consultando las últimas ofertas…</p> : (
