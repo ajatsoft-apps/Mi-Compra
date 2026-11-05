@@ -76,3 +76,17 @@ No es suficiente para un comparador completo de productos:
 6. Integración en el comparador únicamente cuando exista coincidencia inequívoca de producto y unidad.
 
 No se cambia todavía el esquema actual de Mercadona/OpenCesta ni se despliega nada en producción.
+
+
+## Revisión de condiciones de uso
+
+El aviso legal de Lidl España atribuye a Lidl o a sus licenciantes los derechos sobre los contenidos del portal y prohíbe la reproducción, distribución y comunicación pública de contenidos con fines comerciales sin autorización. Las condiciones de Lidl Plus también describen la participación como de uso privado y excluyen la participación comercial.
+
+Por tanto:
+
+- La prueba técnica no equivale a permiso para redistribuir datos.
+- No publicar una API abierta ni exponer imágenes/contenidos de Lidl a terceros.
+- Antes de un despliegue público o comercial, solicitar autorización o confirmar formalmente el marco de uso aplicable.
+- Cualquier siguiente fase debe mantener acceso autenticado y familiar, limitar la frecuencia de consulta y conservar la atribución/procedencia, sin asumir que eso resuelve por sí solo las cuestiones de derechos.
+
+Referencias consultadas: [Aviso legal de Lidl España](https://www.lidl.es/c/aviso-legal/s10075786) y [condiciones de uso de Lidl Plus](https://www.lidl.es/c/lidl-plus-informacion-condiciones-de-uso/s10086146).
