@@ -1,0 +1,34 @@
+name: CI Lidl global offers
+
+on:
+  pull_request:
+    branches:
+      - 'fase-5/**'
+    paths:
+      - 'scripts/import_lidl_weekly_offers.py'
+      - 'tests/test_import_lidl_weekly_offers.py'
+      - 'src/LidlOffers.tsx'
+      - 'src/App.tsx'
+      - '.github/workflows/import-lidl-offers.yml'
+      - 'supabase/migrations/*lidl*'
+      - 'docs/FASE_9_LIDL_OFERTAS_GLOBALES.md'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile importer and tests
+        run: python -m py_compile scripts/import_lidl_weekly_offers.py tests/test_import_lidl_weekly_offers.py
+      - name: Run Lidl importer tests
+        run: python -m unittest discover -s tests -p 'test_import_lidl_weekly_offers.py' -v
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build PWA
+        run: npm run build
