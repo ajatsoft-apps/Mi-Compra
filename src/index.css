@@ -623,3 +623,83 @@ button { touch-action:manipulation; }
   .item-price strong { font-size:12px; }
   .market-result-main strong { font-size:13px; }
 }
+
+
+/* Stronger mobile readability pass: prioritize real reading size */
+@media (max-width:760px) {
+  body { font-size:16px; }
+  .brand strong { font-size:18px; }
+  .brand small { font-size:12px; }
+  .account-button { font-size:14px; }
+  .welcome h1 { font-size:30px; line-height:1.12; }
+  .welcome p, .welcome > div > p:not(.eyebrow) { font-size:15px; line-height:1.5; }
+  .summary-card strong { font-size:23px; }
+  .summary-card div span { font-size:13px; }
+  .list-heading h2 { font-size:22px; }
+  .list-heading .eyebrow, .welcome .eyebrow { font-size:12px; }
+  .mobile-add-trigger { min-height:46px; padding-inline:14px; font-size:14px; }
+  .filter-tab { min-height:46px; font-size:15px; }
+  .filter-tab span { font-size:12px; }
+  .store-tab { min-height:46px; font-size:14px; }
+  .store-tab-count { font-size:12px; }
+  .shopping-item { min-height:84px; }
+  .item-details strong { font-size:17px; line-height:1.3; }
+  .item-details span { font-size:13px; line-height:1.4; }
+  .item-price strong { font-size:14px; }
+  .item-price small { font-size:12px; }
+  .list-total > div span, .list-total > small { font-size:13px; }
+  .list-total > div strong { font-size:23px; }
+  .empty-state strong { font-size:17px; }
+  .empty-state p, .list-footnote { font-size:13px; line-height:1.55; }
+  .add-panel .panel-heading h2 { font-size:24px; }
+  .add-panel .eyebrow { font-size:12px; }
+  .add-panel .field-label { font-size:15px; }
+  .add-panel .text-input { min-height:50px; font-size:17px; }
+  .add-panel .category-chip { min-height:42px; font-size:14px; }
+  .add-panel .add-button { min-height:50px; font-size:16px; }
+  .account-page-heading h1 { font-size:31px; }
+  .account-page-heading > p:last-child { font-size:15px; }
+  .back-to-list { min-height:46px; font-size:14px; }
+  .account-page-card .auth-heading h2, .household-management-card h2 { font-size:20px; }
+  .account-page-card .field-label, .account-page-card .auth-note,
+  .management-empty, .management-person span { font-size:14px; }
+  .management-person strong { font-size:15px; }
+  .sync-details > div, .sync-details strong { font-size:13px; }
+  .catalog-actions button { min-height:44px; font-size:13px; }
+  .catalog-tabs button { min-height:46px; font-size:14px; }
+  .catalog-equivalence-row { font-size:13px; }
+  .market-price-status span { font-size:13px; }
+  .market-price-status strong { font-size:15px; }
+  .market-results-heading h2 { font-size:19px; }
+  .market-result-main strong { font-size:15px; line-height:1.4; }
+  .market-result-main span, .market-result-main small { font-size:13px; line-height:1.45; }
+  .market-result-price strong { font-size:18px; }
+  .market-result-price span, .market-price-reduced, .market-price-disclaimer { font-size:13px; }
+  .optimizer-total span { font-size:14px; }
+  .optimizer-total small { font-size:13px; }
+  .autocomplete-status, .autocomplete-fallback-note { font-size:13px; }
+  .product-suggestions { max-height:48dvh; gap:6px; padding:7px; }
+  .product-suggestion {
+    grid-template-columns:40px 68px minmax(0,1fr) auto;
+    min-height:88px;
+    gap:10px;
+    padding:9px 7px;
+    border:1px solid #edf1e9;
+    border-radius:12px;
+  }
+  .product-suggestion .supermarket-mark { width:38px; min-width:38px; min-height:32px; font-size:11px; }
+  .suggestion-image { width:68px; height:68px; border-radius:10px; }
+  .suggestion-copy { gap:5px; }
+  .suggestion-copy strong { font-size:15px; line-height:1.3; white-space:normal; }
+  .suggestion-copy small { font-size:12px; line-height:1.35; white-space:normal; }
+  .suggestion-price { font-size:13px; white-space:normal; text-align:right; }
+}
+@media (max-width:390px) {
+  .welcome h1 { font-size:28px; }
+  .item-details strong { font-size:16px; }
+  .product-suggestion { grid-template-columns:34px 60px minmax(0,1fr); min-height:82px; gap:8px; }
+  .suggestion-image { width:60px; height:60px; }
+  .suggestion-price { grid-column:3; justify-self:start; text-align:left; font-size:13px; }
+  .suggestion-copy strong { font-size:14px; }
+  .suggestion-copy small { font-size:12px; }
+}
