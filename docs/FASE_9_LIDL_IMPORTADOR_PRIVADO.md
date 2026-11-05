@@ -56,4 +56,4 @@ La ejecución manual evita automatizar llamadas a un endpoint interno antes de c
 
 ## Prueba de origen
 
-La prueba técnica anterior está documentada en [PR #12](https://github.com/ajatsoft-apps/Mi-Compra/pull/12) y en el [informe de la sonda](./FASE_9_LIDL_OFERTAS.md). Se observaron 31 ofertas por tienda en las tres tiendas consultadas de Castellón, sin EAN explícitos en la muestra.
+La prueba técnica anterior está documentada en [PR #12](https://github.com/ajatsoft-apps/Mi-Compra/pull/12) y en el informe incluido en ese PR. Se observaron 31 ofertas por tienda en las tres tiendas consultadas de Castellón, sin EAN explícitos en la muestra.
