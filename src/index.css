@@ -412,14 +412,11 @@ button { touch-action:manipulation; }
   .account-button { flex:0 0 auto; min-height:38px; max-width:none; padding:0 12px; border-radius:12px; font-size:11px; white-space:nowrap; background:#fff; }
   .account-button.account-menu-trigger { margin-left:auto; }
   .account-menu-label { max-width:120px; }
-  .welcome { padding:25px 3px 16px; align-items:center; }
-  .welcome .eyebrow { margin-bottom:7px; font-size:9px; }
-  .welcome h1 { font-size:clamp(29px,8vw,38px); line-height:1.04; letter-spacing:-1.8px; }
-  .welcome-copy { max-width:260px; margin-top:8px; font-size:11px; line-height:1.45; }
-  .basket-art { width:76px; height:68px; margin:7px 2px 0 0; border-radius:22px; font-size:17px; box-shadow:none; }
-  .basket-art span:nth-child(2) { transform:translateY(-8px) rotate(12deg); }
-  .basket-art span:nth-child(3) { transform:translateY(4px) rotate(-10deg); }
-  .basket-art span:nth-child(4) { transform:translateY(-7px); }
+  .welcome { padding:17px 3px 10px; align-items:flex-start; }
+  .welcome .eyebrow { margin-bottom:5px; font-size:9px; }
+  .welcome h1 { font-size:25px; line-height:1.08; letter-spacing:-1.1px; }
+  .welcome h1 br { display:none; }
+  .welcome-copy, .basket-art { display:none; }
   .summary-grid { gap:8px; margin-bottom:12px; }
   .summary-card { min-width:0; gap:9px; padding:10px 11px; border-radius:13px; }
   .summary-icon { width:31px; height:31px; border-radius:10px; font-size:15px; }
