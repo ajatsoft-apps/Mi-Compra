@@ -953,3 +953,96 @@ button { touch-action:manipulation; }
   .catalog-modal-actions { display: grid; grid-template-columns: 1fr; }
   .catalog-modal-actions button { width: 100%; }
 }
+
+
+/* Lista de compra: identidad de supermercado con fondo muy suave */
+.shopping-item {
+  border: 2px solid #e8eee6;
+  border-radius: 13px;
+  margin: 7px 0;
+  padding: 10px 9px;
+  background: #fff;
+}
+.shopping-item.mercadona {
+  border-color: #9acb9e;
+  background: #f5fbf4;
+}
+.shopping-item.lidl {
+  border-color: #ecd47a;
+  background: #fffdf3;
+}
+.shopping-item.completed {
+  opacity: .78;
+}
+.lidl-offer-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.lidl-offer-tabs button {
+  min-height: 48px;
+  border: 1px solid #e5e9e2;
+  border-radius: 12px;
+  background: #f8faf6;
+  color: #657064;
+  font-weight: 700;
+}
+.lidl-offer-tabs button.active {
+  border-color: #d9ae1d;
+  background: #fff9df;
+  color: #68520a;
+  box-shadow: 0 2px 8px #78621a12;
+}
+.lidl-offer-tabs button span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  margin-left: 5px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 11px;
+}
+.lidl-offer-capture {
+  display: block;
+  margin-top: 9px;
+  color: #899287;
+  font-size: 12px;
+}
+.lidl-offer-prices {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 5px 0 3px;
+}
+.lidl-offer-prices > strong {
+  color: #b21e24;
+  font-size: 19px;
+  font-weight: 800;
+}
+.lidl-offer-prices del {
+  color: #92988f;
+  font-size: 13px;
+}
+.lidl-offer-prices > span {
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #fff0e9;
+  color: #b53d2d;
+  font-size: 11px;
+  font-weight: 700;
+}
+.lidl-offer-add {
+  width: auto;
+  min-height: 38px;
+  margin-top: 8px;
+  padding: 8px 13px;
+  font-size: 13px;
+}
+@media (max-width:760px) {
+  .shopping-item { margin: 7px 0; padding: 11px 9px; }
+  .lidl-offer-tabs button { min-height: 50px; font-size: 14px; }
+  .lidl-offer-add { width: 100%; min-height: 44px; font-size: 14px; }
+}
