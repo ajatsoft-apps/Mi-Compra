@@ -213,7 +213,7 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
             {
                 "href": link.get("href"),
                 "title": link.get("title"),
-                "text": re.sub(r"\\s+", " ", link.get("text", "")).strip(),
+                "text": re.sub(r"\s+", " ", link.get("text", "")).strip(),
             }
             for link in parser.links
             if "/c/" in str(link.get("href") or "")
