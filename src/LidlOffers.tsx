@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './data/supabaseClient'
 
-type Props = { online: boolean; onBack: () => void }
+type Props = { online: boolean; onBack: () => void; onAddToBasket: (name: string, unitPrice: number | null) => void }
 type Snapshot = {
   id: string
   store_key: string
@@ -25,7 +25,10 @@ type Offer = {
   price_box: Record<string, unknown> | null
   image_url: string | null
 }
+type OfferTab = 'food' | 'bazaar'
 const dateFormat = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+const euroCurrency = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const foodTerms = /fruta|verdura|patata|tomate|lechuga|lim[oó]n|naranja|mandarina|aguacate|manzana|pera|pl[aá]tano|carne|pollo|cerdo|ternera|vacuno|cordero|pavo|hamburguesa|salchicha|butifarra|pescado|salm[oó]n|merluza|bacalao|marisco|gamba|langostino|mejill[oó]n|pan|baguette|boll[oó]|pastel|tarta|galleta|barquillo|leche|queso|yogur|nata|mantequilla|huevo|arroz|pasta|harina|az[uú]car|aceite|vinagre|legumbre|lenteja|garbanzo|alubia|conserva|at[uú]n|sardina|cereal|cacao|caf[eé]|infusi[oó]n|zumo|agua|refresco|cerveza|vino|chocolate|helado|pizza|croqueta|empanada|l[aá]cteo|alimentaci[oó]n|congelado|embutido|jam[oó]n|chorizo|salami|snack|aperitivo|frutos secos|ma[ií]z|seta|champi[nñ][oó]n|calabac[ií]n|berenjena|pimiento|cebolla|ajo|br[oó]coli|coliflor|zanahoria|pepino|espinaca|uva|fresa|mel[oó]n|sand[ií]a|kiwi|pi[nñ]a|melocot[oó]n|ciruela|cereza|mango|papaya|coco|d[aá]til|higo|panader[ií]a|despensa/i
 
 function formatDate(value: string | null): string {
   if (!value) return 'Sin fecha indicada'
@@ -33,20 +36,34 @@ function formatDate(value: string | null): string {
   return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : dateFormat.format(date)
 }
 
-function displayedPriceText(value: Record<string, unknown> | null): string {
-  if (!value) return ''
-  const parts = ['largePartNumeric', 'smallPartNumeric', 'largePartSymbol', 'smallPartSymbol']
-    .map((key) => value[key])
-    .filter((part) => part !== null && part !== undefined && String(part).trim() !== '')
-    .map(String)
-  return parts.join(' ')
+function asPrice(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value.replace(',', '.'))
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+  return null
 }
 
-export default function LidlOffers({ online, onBack }: Props) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+function isFoodOffer(offer: Offer): boolean {
+  const searchable = [offer.title, offer.brand, offer.category].filter(Boolean).join(' ')
+  return foodTerms.test(searchable)
+}
+
+function displayedPrice(value: Record<string, unknown> | null): { offer: number | null; regular: number | null; symbol: string; discount: string } {
+  return {
+    offer: asPrice(value?.largePartNumeric),
+    regular: asPrice(value?.smallPartNumeric),
+    symbol: typeof value?.priceSymbol === 'string' ? value.priceSymbol : '€',
+    discount: typeof value?.discountMessage === 'string' ? value.discountMessage : '',
+  }
+}
+
+export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [offers, setOffers] = useState<Offer[]>([])
   const [query, setQuery] = useState('')
-  const [storeKey, setStoreKey] = useState('all')
+  const [tab, setTab] = useState<OfferTab>('food')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -70,16 +87,12 @@ export default function LidlOffers({ online, onBack }: Props) {
           .from('lidl_offer_snapshots')
           .select('id,store_key,store_name,store_postal_code,captured_on,captured_at,row_count')
           .order('captured_at', { ascending: false })
-          .limit(30)
+          .limit(1)
         if (snapshotError) throw snapshotError
-        const latestByStore = new Map<string, Snapshot>()
-        for (const row of (snapshotData ?? []) as Snapshot[]) {
-          if (!latestByStore.has(row.store_key)) latestByStore.set(row.store_key, row)
-        }
-        const latest = [...latestByStore.values()]
+        const latest = (snapshotData ?? []) as Snapshot[]
         if (!active) return
-        setSnapshots(latest)
-        if (latest.length === 0) {
+        setSnapshot(latest[0] ?? null)
+        if (!latest[0]) {
           setOffers([])
           setLoading(false)
           return
@@ -87,11 +100,18 @@ export default function LidlOffers({ online, onBack }: Props) {
         const { data: offerData, error: offerError } = await supabase
           .from('lidl_offer_observations')
           .select('snapshot_id,offer_id,title,brand,category,offer_type,redemption_channel,product_ids,start_validity_date,end_validity_date,price_box,image_url')
-          .in('snapshot_id', latest.map((snapshot) => snapshot.id))
+          .eq('snapshot_id', latest[0].id)
           .order('title', { ascending: true })
           .limit(500)
         if (offerError) throw offerError
-        if (active) setOffers((offerData ?? []) as Offer[])
+        if (active) {
+          const unique = new Map<string, Offer>()
+          for (const offer of (offerData ?? []) as Offer[]) {
+            const previous = unique.get(offer.offer_id)
+            if (!previous || (!previous.price_box && offer.price_box)) unique.set(offer.offer_id, offer)
+          }
+          setOffers([...unique.values()])
+        }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : 'No se pudieron cargar las ofertas Lidl.')
       } finally {
@@ -102,17 +122,16 @@ export default function LidlOffers({ online, onBack }: Props) {
     return () => { active = false }
   }, [online])
 
-  const snapshotsById = useMemo(() => new Map(snapshots.map((snapshot) => [snapshot.id, snapshot])), [snapshots])
   const visibleOffers = useMemo(() => {
     const term = query.trim().toLocaleLowerCase('es')
     const now = Date.now()
     return offers.filter((offer) => {
-      if (storeKey !== 'all' && snapshotsById.get(offer.snapshot_id)?.store_key !== storeKey) return false
       if (offer.end_validity_date && Date.parse(offer.end_validity_date) < now) return false
+      if ((tab === 'food') !== isFoodOffer(offer)) return false
       if (!term) return true
       return [offer.title, offer.brand, offer.category].some((value) => value?.toLocaleLowerCase('es').includes(term))
     })
-  }, [offers, query, snapshotsById, storeKey])
+  }, [offers, query, tab])
 
   return (
     <section className="account-page market-prices-page" aria-label="Ofertas semanales Lidl">
@@ -120,60 +139,65 @@ export default function LidlOffers({ online, onBack }: Props) {
         <button className="back-to-list" type="button" onClick={onBack}>← Volver a la lista</button>
         <p className="eyebrow">OFERTAS SEMANALES · LIDL</p>
         <h1>Ofertas Lidl</h1>
-        <p>Promociones obtenidas del feed Lidl Plus y compartidas en Mi Compra, independientemente del hogar. No representan un catálogo completo ni garantizan existencias.</p>
+        <p>Ofertas generales de Lidl España. Se muestran una sola vez, sin repetirlas por cada tienda.</p>
       </div>
 
-      {loading ? <p className="auth-note">Consultando las últimas ofertas…</p> : (
+      {!loading && (
         <div className="market-price-status">
-          <div><span>Tiendas consultadas</span><strong>{snapshots.length}</strong></div>
-          <div><span>Ofertas vigentes o futuras</span><strong>{visibleOffers.length}</strong></div>
-          <div><span>Captura más reciente</span><strong>{snapshots[0] ? formatDate(snapshots[0].captured_on) : 'Sin importar'}</strong></div>
+          <div><span>Ofertas vigentes</span><strong>{offers.filter((offer) => !offer.end_validity_date || Date.parse(offer.end_validity_date) >= Date.now()).length}</strong></div>
+          <div><span>Alimentación</span><strong>{offers.filter(isFoodOffer).length}</strong></div>
+          <div><span>Bazar</span><strong>{offers.filter((offer) => !isFoodOffer(offer)).length}</strong></div>
         </div>
       )}
 
+      {loading && <p className="auth-note">Consultando las últimas ofertas…</p>}
       {error && <p className="auth-feedback error" role="status">{error}</p>}
-
-      {!loading && snapshots.length === 0 && !error && (
+      {!loading && !snapshot && !error && (
         <section className="account-page-card">
           <h2>Todavía no hay ofertas importadas</h2>
-          <p className="auth-note">La base de datos está preparada. Las ofertas se cargarán desde el catálogo global en cuanto termine la primera importación.</p>
+          <p className="auth-note">Las ofertas se mostrarán aquí cuando termine la primera importación.</p>
         </section>
       )}
 
-      {snapshots.length > 0 && (
+      {snapshot && (
         <section className="account-page-card market-search-card">
-          <label className="field-label" htmlFor="lidl-store-filter">Tienda</label>
-          <select id="lidl-store-filter" className="text-input" value={storeKey} onChange={(event) => setStoreKey(event.target.value)}>
-            <option value="all">Todas las tiendas</option>
-            {snapshots.map((snapshot) => <option key={snapshot.store_key} value={snapshot.store_key}>{snapshot.store_name} · {snapshot.store_postal_code ?? snapshot.store_key}</option>)}
-          </select>
-          <label className="field-label" htmlFor="lidl-offer-search">Buscar oferta</label>
+          <div className="lidl-offer-tabs" role="tablist" aria-label="Tipo de ofertas">
+            <button type="button" role="tab" aria-selected={tab === 'food'} className={tab === 'food' ? 'active' : ''} onClick={() => setTab('food')}>🥬 Alimentación <span>{offers.filter(isFoodOffer).length}</span></button>
+            <button type="button" role="tab" aria-selected={tab === 'bazaar'} className={tab === 'bazaar' ? 'active' : ''} onClick={() => setTab('bazaar')}>🧰 Bazar <span>{offers.filter((offer) => !isFoodOffer(offer)).length}</span></button>
+          </div>
+          <label className="field-label" htmlFor="lidl-offer-search">Buscar en {tab === 'food' ? 'alimentación' : 'bazar'}</label>
           <input id="lidl-offer-search" className="text-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. aceite, salmón, detergente…" />
+          <small className="lidl-offer-capture">Última captura: {formatDate(snapshot.captured_on)} · {snapshot.store_name}</small>
         </section>
       )}
 
-      {!loading && snapshots.length > 0 && visibleOffers.length === 0 && !error && (
-        <p className="management-empty market-empty">No hay ofertas vigentes que coincidan con la búsqueda en las tiendas seleccionadas.</p>
+      {!loading && snapshot && visibleOffers.length === 0 && !error && (
+        <p className="management-empty market-empty">No hay ofertas {tab === 'food' ? 'de alimentación' : 'de bazar'} que coincidan con la búsqueda.</p>
       )}
 
       {visibleOffers.length > 0 && (
         <section className="account-page-card market-results-card">
-          <div className="market-results-heading"><h2>Promociones</h2><span>{visibleOffers.length} ofertas</span></div>
+          <div className="market-results-heading"><h2>{tab === 'food' ? 'Alimentación' : 'Bazar'}</h2><span>{visibleOffers.length} ofertas</span></div>
           <ul className="market-results-list">
             {visibleOffers.map((offer) => {
-              const snapshot = snapshotsById.get(offer.snapshot_id)
-              const priceText = displayedPriceText(offer.price_box)
+              const price = displayedPrice(offer.price_box)
+              const currentPrice = price.offer
               return (
-                <li className="market-result-row lidl-offer-row" key={offer.snapshot_id + ':' + offer.offer_id}>
-                  {offer.image_url && <img src={offer.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 76, height: 76, objectFit: 'contain', borderRadius: 10 }} />}
+                <li className="market-result-row lidl-offer-row" key={offer.offer_id}>
+                  {offer.image_url && <img src={offer.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" />}
                   <div className="market-result-main">
                     <strong>{offer.title}</strong>
-                    <span>{[offer.brand, offer.category].filter(Boolean).join(' · ') || 'Oferta Lidl'}</span>
-                    <small>{snapshot?.store_name ?? 'Tienda Lidl'} · {snapshot?.store_postal_code ?? snapshot?.store_key}</small>
+                    <span>{[offer.brand, offer.category && offer.category !== 'Store' ? offer.category : null].filter(Boolean).join(' · ') || 'Oferta Lidl'}</span>
                     <small>Vigencia: {formatDate(offer.start_validity_date)} – {formatDate(offer.end_validity_date)}</small>
-                    {offer.redemption_channel && <small>Canal: {offer.redemption_channel === 'Store' ? 'Tienda física' : offer.redemption_channel === 'OnlineShop' ? 'Tienda online' : offer.redemption_channel}</small>}
-                    {priceText && <small>Texto de precio mostrado por Lidl: {priceText}</small>}
+                    {price.offer != null && (
+                      <div className="lidl-offer-prices">
+                        <strong>{euroCurrency.format(price.offer)}{price.symbol.startsWith('€/') ? ' / ' + price.symbol.slice(2) : ''}</strong>
+                        {price.regular != null && price.regular > price.offer && <del>Antes {euroCurrency.format(price.regular)}{price.symbol.startsWith('€/') ? ' / ' + price.symbol.slice(2) : ''}</del>}
+                        {price.discount && <span>{price.discount}</span>}
+                      </div>
+                    )}
                     {offer.offer_type && <small>Condiciones: {offer.offer_type}</small>}
+                    <button className="add-button lidl-offer-add" type="button" onClick={() => onAddToBasket(offer.title, currentPrice)}>＋ Añadir a cesta</button>
                   </div>
                 </li>
               )
@@ -183,8 +207,8 @@ export default function LidlOffers({ online, onBack }: Props) {
       )}
 
       <div className="market-price-disclaimer">
-        <p>Los importes se conservan tal como los entrega Lidl. No se interpretan automáticamente como precio final cuando la promoción es porcentual, por varias unidades o tiene condiciones especiales. Los identificadores internos de Lidl no son EAN y no se usan para vincular productos.</p>
-        <p>Fuente técnica: <a href="https://github.com/FaserF/ha-lidl" target="_blank" rel="noreferrer">ha-lidl</a> · Feed de ofertas Lidl Plus España. La fecha de captura no garantiza disponibilidad o stock en tienda.</p>
+        <p>Se muestra el precio de oferta y, cuando Lidl lo proporciona, el precio anterior. Si la oferta no incluye un importe numérico, no se inventa ni se calcula.</p>
+        <p>La misma promoción se muestra una sola vez, no una vez por cada tienda. La fecha de captura no garantiza disponibilidad o stock.</p>
       </div>
     </section>
   )
