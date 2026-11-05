@@ -16,46 +16,66 @@ Mi Compra no debe presentar como precio actual una cifra antigua, genérica o re
 
 No se deducirán equivalencias exactas a partir de nombres parecidos. Una cesta estadística de categoría no se mostrará como precio de un EAN concreto.
 
+## Decisión técnica: Mercadona (5 de noviembre de 2026)
+
+**No automatizar por ahora la descarga del catálogo de Mercadona.**
+
+La investigación confirma que existen endpoints de lectura usados por la tienda online (categorías y datos de producto), con los que técnicamente se podría recorrer el catálogo y obtener precios. Sin embargo:
+
+- No es una API pública oficial ni documentada por Mercadona; son endpoints internos observados mediante ingeniería inversa.
+- La documentación técnica independiente consultada indica que la ruta de API está excluida para rastreadores en robots.txt.
+- Los endpoints y sus formatos pueden cambiar sin aviso y aplicar límites o bloqueos.
+- No se ha confirmado una autorización de Mercadona para descargar, almacenar y redistribuir de forma automatizada su catálogo y precios dentro de Mi Compra.
+- Que los endpoints respondan sin autenticación no equivale a una licencia de reutilización de los datos.
+
+Por tanto, no se desplegará un scraper, no se contratará un intermediario que se limite a raspar esos mismos endpoints y no se almacenarán credenciales ni tokens de cuentas de Mercadona. La integración automática solo se reconsiderará si Mercadona ofrece una API/acuerdo autorizado o se confirma que la reutilización prevista está permitida.
+
+La tienda online sí permite consultar productos y precios para una zona de entrega. Cualquier precio recogido manualmente por el usuario deberá identificarse como observación propia, con fecha y zona; no se presentará como un catálogo completo.
+
+Referencias técnicas no oficiales:
+- https://github.com/datania/mercadona-catalog/blob/main/api.md
+- https://github.com/ALArvi019/mercadona-cart-bridge/blob/main/docs/api-mercadona.md
+
 ## Fuentes evaluadas
 
-### CholloSúper — candidata para referencias concretas
+### CholloSúper — candidata CC BY 4.0
 
 - Publica CSV de cesta, índice, frescura y bajadas, además de un RSS de ofertas.
-- Declara licencia CC BY 4.0 y permite reutilización comercial citando la fuente y enlazando a su web.
+- Declara licencia CC BY 4.0 y permite reutilización citando la fuente y enlazando a su web.
 - Su metodología describe una cesta de 202 productos concretos y recogida diaria desde tiendas online públicas.
-- Limitación geográfica importante: en DIA, Consum, Carrefour y Condis los precios varían por tienda; sus páginas usan por defecto la zona de Granollers. No se debe atribuir ese precio al código postal 12006.
-- La metodología indica que Lidl y Aldi dejaron de publicar catálogo con precios en junio de 2026; para esas cadenas se conserva el último precio conocido (Lidl: 15 de junio; Aldi: 9 de junio). Esos datos no son válidos para mostrar como precio actual.
-- Conclusión: posible fuente auxiliar para referencias y ofertas cuando la zona y fecha estén validadas. Excluir cualquier dato caducado y no usar la zona de Granollers como sustituto de Castellón.
+- En DIA, Consum, Carrefour y Condis los precios varían por tienda; sus páginas usan por defecto la zona de Granollers. No se debe atribuir ese precio al código postal 12006.
+- La metodología indica que Lidl y Aldi dejaron de publicar catálogo con precios en junio de 2026; para esas cadenas se conserva el último precio conocido. Esos datos no son válidos para mostrar como precio actual.
+- Conclusión: posible fuente auxiliar para referencias y ofertas cuando la fecha y el ámbito territorial estén validados. Antes de usarla para Mercadona en Castellón, hay que comprobar qué zona cubre exactamente su dato.
 
 Fuente de datos: https://chollosuper.com/datos
 Metodología: https://chollosuper.com/metodologia
 
-### tuTándem — candidata para cesta genérica diaria
+### tuTándem — cesta genérica diaria CC BY 4.0
 
 - Publica CSV diarios bajo licencia CC BY 4.0.
 - Cubre una cesta de 26 productos básicos en Mercadona, DIA, Consum, bonÀrea e HiperDino.
 - El dato es la mediana del precio por kilo, litro o unidad entre referencias equivalentes de cada cadena; no es un precio de marca, EAN o envase concreto.
 - No incluye precios de tiendas concretas ni promociones de tarjeta.
-- Conclusión: útil para una comparación orientativa de categorías básicas y tendencias, nunca para afirmar el precio de un producto de catálogo concreto ni para calcular el ahorro exacto de una compra.
+- Conclusión: útil para comparar tendencias o categorías básicas, nunca para afirmar el precio de un producto de catálogo concreto ni para calcular el ahorro exacto de una compra.
 
 Fuente y licencia: https://tutandem.es/datos
 
-### Open Prices / Open Food Facts — candidata para precios por establecimiento aportados por comunidad
+### Open Prices / Open Food Facts — observaciones de la comunidad (ODbL)
 
 - API pública de precios y establecimientos; los datos los aportan usuarios y terceros.
-- El proyecto solicita una prueba del precio, como foto de etiqueta o ticket, para mejorar la calidad.
+- El proyecto solicita pruebas del precio, como foto de etiqueta o ticket, para mejorar la calidad.
 - Puede aportar observaciones de un producto concreto en una tienda concreta, pero la cobertura depende de las contribuciones disponibles y debe comprobarse para cada zona.
-- La licencia de la base de datos es ODbL. Exige atribución y obligaciones de compartir bases derivadas bajo condiciones compatibles. No se incorporará al almacén principal hasta revisar que esas obligaciones son compatibles con la distribución y el modelo de datos de Mi Compra.
-- Conclusión: fuente potencial para observaciones locales verificadas, pero separada y pendiente de decisión de licencia/cobertura.
+- La base de datos usa ODbL. Exige atribución y obligaciones de compartir bases derivadas bajo condiciones compatibles.
+- Decisión: si se integra, se mantendrá en un conjunto de datos claramente separado, con atribución y cumplimiento ODbL; no se mezclará indiscriminadamente con datos de otras licencias. Antes de habilitarlo se comprobará la cobertura real en España y Castellón.
 
 API: https://prices.openfoodfacts.org/api/docs
-Licencia y guía de API: https://github.com/openfoodfacts/open-prices/blob/main/API.md
+Licencia y guía: https://github.com/openfoodfacts/open-prices/blob/main/API.md
 
 ### Fuentes oficiales de las cadenas
 
-- Mercadona explica que la disponibilidad del servicio online depende del código postal. También indica que los precios de su tienda online son los mismos que los del supermercado físico, con particularidades para productos de peso variable.
-- Lidl advierte que la disponibilidad y el stock de artículos en tienda pueden variar por zona.
-- No se ha identificado en esta revisión una API pública oficial y documentada que permita integrar de forma estable los catálogos/precios de Mercadona, Lidl y Carrefour. Esto no demuestra que no existan acuerdos privados o interfaces internas; no se dependerá de endpoints privados sin una evaluación técnica y legal.
+- Mercadona explica que la disponibilidad del servicio online depende del código postal y que los precios online son los mismos que en el supermercado físico, con particularidades para productos de peso variable.
+- Lidl advierte que la disponibilidad y el stock pueden variar por zona.
+- No se ha identificado una API pública oficial y documentada para integrar de forma estable los catálogos/precios de Mercadona, Lidl y Carrefour. Esto no demuestra que no existan acuerdos privados o interfaces internas.
 
 Mercadona: https://www.mercadona.es/
 FAQ de precios Mercadona: https://ayuda.tienda.mercadona.es/hc/es/articles/360000857491-Products-prices
@@ -63,17 +83,19 @@ Lidl: https://www.lidl.es/c/precios-imbatibles/
 
 ## Prioridad para el despliegue inicial
 
-1. Mercadona: priorizar observaciones recientes, dejando clara la cobertura territorial del dato.
-2. Lidl: no reutilizar como actual ningún precio de catálogo que solo tenga una observación de junio de 2026; evaluar folletos/promociones vigentes por separado.
+1. Mercadona: no automatizar hasta disponer de autorización o una fuente reutilizable confirmada. Mientras tanto, admitir observaciones introducidas por el usuario y evaluar CholloSúper/Open Prices con fecha y ámbito visibles.
+2. Lidl: no reutilizar como actual ningún precio que solo tenga una observación antigua; evaluar folletos/promociones vigentes por separado.
 3. Carrefour: no usar el precio por defecto de Granollers para una comparación en Castellón; exigir una fuente local o un código postal/tienda compatible.
-4. Mantener la posibilidad de añadir otras cadenas cuando exista una fuente fiable y con licencia clara.
+4. Incorporar otras cadenas solo cuando exista una fuente fiable y con licencia clara.
 
-## Decisiones pendientes antes del primer conector
+## Decisiones de arquitectura
 
-- Confirmar qué cadenas quiere comparar realmente el hogar y en qué orden.
-- Validar si el código postal 12006 sigue siendo el ámbito de referencia.
-- Decidir si se acepta incorporar datos ODbL de Open Prices o si se limita la primera versión a fuentes CC BY 4.0 y oficiales.
-- Verificar cobertura real por producto y tienda antes de habilitar una comparación como «precio actual».
+- Los adaptadores de fuentes estarán desacoplados para que un proveedor pueda retirarse sin afectar a la lista ni al catálogo familiar.
+- Se distinguirán el catálogo familiar privado, los datos de mercado externos y las observaciones aportadas por usuarios.
+- Cada observación guardará fuente, fecha, ámbito, precio de envase, precio unitario, evidencia y condiciones.
+- Los datos ODbL se mantendrán separados de conjuntos con licencias incompatibles.
+- No se almacenarán credenciales de supermercados ni se accederá a carritos, pedidos o cuentas de usuario.
+- Los importadores nunca marcarán como completa una carga parcial ni sustituirán una carga válida por un resultado vacío.
 
 ## Regla de presentación
 
