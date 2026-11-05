@@ -130,7 +130,7 @@ function App() {
     }
   }, [])
 
-  async function runSync(force = false) {
+  async function runSync(force = false, pausedAfterSync = syncPaused) {
     if (!session || !isReady || !isOnline || syncInFlightRef.current || (syncPaused && !force)) return
     syncInFlightRef.current = true
     setSyncState('syncing')
@@ -168,12 +168,12 @@ function App() {
       setList(result.list)
       setItems(finalItems)
       hasInitialSyncRef.current = true
-      setSyncState(syncPaused ? 'paused' : hasPendingLocalChanges ? 'syncing' : 'synced')
+      setSyncState(pausedAfterSync ? 'paused' : hasPendingLocalChanges ? 'syncing' : 'synced')
       setSyncMessage(hasPendingLocalChanges
         ? 'Sincronización actualizada; enviando los últimos cambios locales.'
         : 'Cambios guardados y sincronizados.')
     } catch (error) {
-      setSyncState(syncPaused ? 'paused' : navigator.onLine ? 'error' : 'offline')
+      setSyncState(pausedAfterSync ? 'paused' : navigator.onLine ? 'error' : 'offline')
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.')
     } finally {
       syncInFlightRef.current = false
@@ -284,7 +284,7 @@ function App() {
       try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La preferencia también se mantiene en memoria. */ }
       setSyncPaused(false)
       setSyncMessage('Reanudando sincronización…')
-      void runSync(true)
+      void runSync(true, false)
     } else {
       try { localStorage.setItem(SYNC_PAUSED_KEY, 'true') } catch { /* La pausa se mantiene en memoria durante esta sesión. */ }
       setSyncPaused(true)
