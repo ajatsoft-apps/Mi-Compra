@@ -37,6 +37,7 @@ function App() {
   const [sessionReady, setSessionReady] = useState(false)
   const [isOnline, setIsOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
   const [syncState, setSyncState] = useState<SyncState>('local')
+  const [hasInitialSync, setHasInitialSync] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
   const [syncDisconnected, setSyncDisconnected] = useState(() => {
     try { return localStorage.getItem(SYNC_DISCONNECTED_KEY) === 'true' } catch { return false }
@@ -104,6 +105,7 @@ function App() {
       setSessionReady(true)
       if (!nextSession) {
         hasInitialSyncRef.current = false
+        setHasInitialSync(false)
         lastSyncedSnapshotRef.current = ''
         setSyncState('local')
       }
@@ -178,6 +180,7 @@ function App() {
       setList(result.list)
       setItems(finalItems)
       hasInitialSyncRef.current = true
+      setHasInitialSync(true)
       setSyncState(disconnectedAfterSync ? 'local' : pausedAfterSync ? 'paused' : hasPendingLocalChanges ? 'syncing' : 'synced')
       setSyncMessage(hasPendingLocalChanges
         ? 'Sincronización actualizada; enviando los últimos cambios locales.'
@@ -190,6 +193,7 @@ function App() {
         setSyncDisconnected(true)
         setSyncPaused(false)
         hasInitialSyncRef.current = false
+        setHasInitialSync(false)
         lastSyncedSnapshotRef.current = ''
         setSyncState('local')
         setSyncMessage('Esta cuenta ya no pertenece a este hogar. Puedes crear uno nuevo o introducir un código de invitación.')
@@ -227,7 +231,7 @@ function App() {
   }, [items, isReady, list.id, session?.user.id, isOnline, syncPaused, syncDisconnected])
 
   useEffect(() => {
-    if (!session || syncPaused || syncDisconnected || !isSupabaseConfigured || !supabase || !hasInitialSyncRef.current) return
+    if (!session || syncPaused || syncDisconnected || !isSupabaseConfigured || !supabase || !hasInitialSync) return
     const client = supabase
     const channel = client
       .channel(`shopping-list-${list.id}`)
@@ -257,7 +261,7 @@ function App() {
       })
       .subscribe()
     return () => { void client.removeChannel(channel) }
-  }, [session?.user.id, list.id, syncPaused, syncDisconnected])
+  }, [session?.user.id, list.id, syncPaused, syncDisconnected, hasInitialSync])
 
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
   const pendingCount = activeItems.filter((item) => !item.completed).length
@@ -337,6 +341,7 @@ function App() {
       setSyncDisconnected(true)
       setSyncPaused(false)
       hasInitialSyncRef.current = false
+      setHasInitialSync(false)
       lastSyncedSnapshotRef.current = ''
       setSyncState('local')
       setSyncMessage('Esta cuenta ya no pertenece al hogar. Tus productos se conservan en este dispositivo.')
@@ -372,6 +377,7 @@ function App() {
       setSyncDisconnected(false)
       setSyncPaused(false)
       hasInitialSyncRef.current = false
+      setHasInitialSync(false)
       lastSyncedSnapshotRef.current = ''
       await saveActiveWorkspace(nextHousehold, list, false)
       setInviteMessage('Hogar creado. Preparando la lista compartida…')
@@ -439,6 +445,7 @@ function App() {
       setSyncDisconnected(false)
       setSyncPaused(false)
       hasInitialSyncRef.current = false
+      setHasInitialSync(false)
       lastSyncedSnapshotRef.current = ''
       await saveActiveWorkspace(nextHousehold, workspaceRef.current.list, false)
       setInviteMessage('Te has unido al hogar. Estamos incorporando y sincronizando tu lista.')
