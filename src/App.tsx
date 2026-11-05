@@ -138,6 +138,7 @@ function App() {
   const [note, setNote] = useState('')
   const [price, setPrice] = useState('')
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [mobileAddOpen, setMobileAddOpen] = useState(false)
   const [exportFeedback, setExportFeedback] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
   const [selectedStore, setSelectedStore] = useState<ShoppingStore>(firstEnabledStore)
@@ -786,6 +787,7 @@ function App() {
     setUnit('ud.')
     setNote('')
     setPrice('')
+    setMobileAddOpen(false)
   }
 
 
@@ -867,6 +869,7 @@ function App() {
     setNote('')
     setPrice('')
     setFilter('Pendientes')
+    setMobileAddOpen(false)
   }
 
   function toggleItem(id: string) {
@@ -1114,9 +1117,11 @@ function App() {
         </section>
 
         <div className="content-grid">
-          <section className="panel add-panel">
+          {mobileAddOpen && <button type="button" className="mobile-sheet-backdrop" aria-label="Cerrar formulario de producto" onClick={() => setMobileAddOpen(false)} />}
+          <section className={mobileAddOpen ? 'panel add-panel mobile-add-open' : 'panel add-panel'}>
             <div className="panel-heading">
               <div><p className="eyebrow">AÑADIR A LA LISTA</p><h2>¿Qué hace falta?</h2></div>
+              <button type="button" className="mobile-sheet-close" aria-label="Cerrar" onClick={() => setMobileAddOpen(false)}>×</button>
               <span className="heading-plus">＋</span>
             </div>
             <form onSubmit={addItem}>
@@ -1170,6 +1175,7 @@ function App() {
                   </div>}
                 </div>
               </div>
+              <button type="button" className="mobile-add-trigger" onClick={() => setMobileAddOpen(true)}><span>＋</span> Añadir producto</button>
             </div>
             {exportFeedback && <p className="export-feedback" role="status">{exportFeedback}</p>}
             <div className="store-tabs" role="tablist" aria-label="Listas de compra">
