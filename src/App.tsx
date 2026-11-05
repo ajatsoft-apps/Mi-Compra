@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { loadLocalWorkspace, saveLocalItems } from './data/localDatabase'
+import { loadLocalWorkspace, saveActiveWorkspace, saveLocalItems } from './data/localDatabase'
 import { pullRemoteItems, synchronizeWorkspace } from './data/syncService'
 import { isSupabaseConfigured, supabase } from './data/supabaseClient'
 import type { Category, Household, ShoppingItem, ShoppingList } from './domain/shopping'
@@ -10,6 +10,7 @@ type Filter = 'Pendientes' | 'Todo' | 'Comprados'
 type SyncState = 'local' | 'syncing' | 'synced' | 'offline' | 'error' | 'paused'
 
 const SYNC_PAUSED_KEY = 'mi-compra.sync-paused.v1'
+const SYNC_DISCONNECTED_KEY = 'mi-compra.sync-disconnected.v1'
 
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
 const categoryIcons: Record<Category, string> = {
@@ -37,6 +38,9 @@ function App() {
   const [isOnline, setIsOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
   const [syncState, setSyncState] = useState<SyncState>('local')
   const [syncMessage, setSyncMessage] = useState('')
+  const [syncDisconnected, setSyncDisconnected] = useState(() => {
+    try { return localStorage.getItem(SYNC_DISCONNECTED_KEY) === 'true' } catch { return false }
+  })
   const [syncPaused, setSyncPaused] = useState(() => {
     try { return localStorage.getItem(SYNC_PAUSED_KEY) === 'true' } catch { return false }
   })
@@ -46,7 +50,7 @@ function App() {
   const [category, setCategory] = useState<Category>('Otros')
   const [note, setNote] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
-  const [showAccountPanel, setShowAccountPanel] = useState(false)
+  const [accountScreenOpen, setAccountScreenOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -130,8 +134,8 @@ function App() {
     }
   }, [])
 
-  async function runSync(force = false, pausedAfterSync = syncPaused) {
-    if (!session || !isReady || !isOnline || syncInFlightRef.current || (syncPaused && !force)) return
+  async function runSync(force = false, pausedAfterSync = syncPaused, disconnectedAfterSync = syncDisconnected) {
+    if (!session || !isReady || !isOnline || syncInFlightRef.current || ((syncPaused || syncDisconnected) && !force)) return
     syncInFlightRef.current = true
     setSyncState('syncing')
     setSyncMessage('')
@@ -168,12 +172,12 @@ function App() {
       setList(result.list)
       setItems(finalItems)
       hasInitialSyncRef.current = true
-      setSyncState(pausedAfterSync ? 'paused' : hasPendingLocalChanges ? 'syncing' : 'synced')
+      setSyncState(disconnectedAfterSync ? 'local' : pausedAfterSync ? 'paused' : hasPendingLocalChanges ? 'syncing' : 'synced')
       setSyncMessage(hasPendingLocalChanges
         ? 'Sincronización actualizada; enviando los últimos cambios locales.'
         : 'Cambios guardados y sincronizados.')
     } catch (error) {
-      setSyncState(pausedAfterSync ? 'paused' : navigator.onLine ? 'error' : 'offline')
+      setSyncState(disconnectedAfterSync ? 'local' : pausedAfterSync ? 'paused' : navigator.onLine ? 'error' : 'offline')
       setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar. Los cambios siguen guardados en este dispositivo.')
     } finally {
       syncInFlightRef.current = false
@@ -181,24 +185,24 @@ function App() {
   }
 
   useEffect(() => {
-    if (sessionReady && isReady && session && isOnline && !syncPaused) void runSync()
+    if (sessionReady && isReady && session && isOnline && !syncPaused && !syncDisconnected) void runSync()
     if (session && !isOnline) setSyncState('offline')
-  }, [session?.user.id, sessionReady, isReady, isOnline, syncPaused])
+  }, [session?.user.id, sessionReady, isReady, isOnline, syncPaused, syncDisconnected])
 
   useEffect(() => {
     if (!isReady) return
     void saveLocalItems(list.id, items).catch(() => {
       setStorageError('No se pudo guardar la lista en este dispositivo. Comprueba el espacio disponible del navegador.')
     })
-    if (!session || !isOnline || syncPaused || !hasInitialSyncRef.current) return
+    if (!session || !isOnline || syncPaused || syncDisconnected || !hasInitialSyncRef.current) return
     const snapshot = JSON.stringify(items)
     if (snapshot === lastSyncedSnapshotRef.current) return
     const timer = window.setTimeout(() => { void runSync() }, 850)
     return () => window.clearTimeout(timer)
-  }, [items, isReady, list.id, session?.user.id, isOnline, syncPaused])
+  }, [items, isReady, list.id, session?.user.id, isOnline, syncPaused, syncDisconnected])
 
   useEffect(() => {
-    if (!session || syncPaused || !isSupabaseConfigured || !supabase || !hasInitialSyncRef.current) return
+    if (!session || syncPaused || syncDisconnected || !isSupabaseConfigured || !supabase || !hasInitialSyncRef.current) return
     const client = supabase
     const channel = client
       .channel(`shopping-list-${list.id}`)
@@ -228,7 +232,7 @@ function App() {
       })
       .subscribe()
     return () => { void client.removeChannel(channel) }
-  }, [session?.user.id, list.id, syncPaused])
+  }, [session?.user.id, list.id, syncPaused, syncDisconnected])
 
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
   const pendingCount = activeItems.filter((item) => !item.completed).length
@@ -263,12 +267,12 @@ function App() {
           setAuthMessage('Cuenta creada. Revisa tu correo y confirma la dirección para poder iniciar sesión.')
         } else {
           setAuthMessage('Cuenta creada y sesión iniciada.')
-          setShowAccountPanel(false)
+          setAccountScreenOpen(false)
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
-        setShowAccountPanel(false)
+        setAccountScreenOpen(false)
         setPassword('')
       }
     } catch (error) {
@@ -291,6 +295,29 @@ function App() {
       setSyncState('paused')
       setSyncMessage('La sincronización está pausada en este dispositivo. Tus cambios siguen guardándose aquí.')
     }
+  }
+
+  async function disconnectSync() {
+    if (syncInFlightRef.current) return
+    try { localStorage.setItem(SYNC_DISCONNECTED_KEY, 'true') } catch { /* El estado se mantiene en memoria si el almacenamiento está bloqueado. */ }
+    try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La desconexión prevalece sobre la pausa. */ }
+    setSyncDisconnected(true)
+    setSyncPaused(false)
+    hasInitialSyncRef.current = false
+    lastSyncedSnapshotRef.current = ''
+    setSyncState('local')
+    setSyncMessage('Este dispositivo está desvinculado. La cuenta sigue abierta y los productos se guardan solo aquí.')
+    try { await saveActiveWorkspace(household, list, false) } catch { /* Los datos locales siguen disponibles aunque no se actualice el indicador persistente. */ }
+  }
+
+  function connectSync() {
+    if (!session || !isOnline || syncInFlightRef.current) return
+    try { localStorage.removeItem(SYNC_DISCONNECTED_KEY) } catch { /* La conexión se mantiene en memoria durante esta sesión. */ }
+    try { localStorage.removeItem(SYNC_PAUSED_KEY) } catch { /* La conexión explícita también elimina la pausa. */ }
+    setSyncDisconnected(false)
+    setSyncPaused(false)
+    setSyncMessage('Conectando con el hogar…')
+    void runSync(true, false, false)
   }
 
   async function signOut() {
@@ -417,7 +444,9 @@ function App() {
 
   const syncLabel = !session
     ? 'Solo en este dispositivo'
-    : syncPaused
+    : syncDisconnected
+      ? 'Sincronización desconectada'
+      : syncPaused
       ? 'Sincronización pausada'
       : syncState === 'syncing'
       ? 'Sincronizando…'
@@ -438,76 +467,92 @@ function App() {
             <span><strong>Mi Compra</strong><small>La compra de casa, en orden</small></span>
           </a>
           <div className="topbar-actions">
-            <button className="account-button account-menu-trigger" type="button" aria-expanded={showAccountPanel} aria-haspopup="dialog" onClick={() => setShowAccountPanel((value) => !value)}>
+            <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => setAccountScreenOpen(true)>
               <span className={syncState === 'synced' && !syncPaused ? 'online-dot' : 'status-dot'} />
               <span className="account-menu-label">{session ? household.name : 'Cuenta y sincronización'}</span>
-              <span aria-hidden="true">{showAccountPanel ? '⌃' : '⌄'}</span>
+              <span aria-hidden="true">{accountScreenOpen ? '←' : '⚙'}</span>
             </button>
           </div>
         </header>
 
-        {showAccountPanel && (
-          <section className="account-panel" role="dialog" aria-label="Cuenta y sincronización">
-            <div className="account-panel-heading">
-              <div><p className="eyebrow">MI COMPRA</p><h2>{session ? household.name : 'Cuenta y sincronización'}</h2></div>
-              <button className="panel-close" type="button" aria-label="Cerrar panel" onClick={() => setShowAccountPanel(false)}>×</button>
+        {accountScreenOpen ? (
+          <section className="account-page" aria-label="Cuenta y sincronización">
+            <div className="account-page-heading">
+              <button className="back-to-list" type="button" onClick={() => setAccountScreenOpen(false)}>← Volver a la lista</button>
+              <p className="eyebrow">AJUSTES DE MI COMPRA</p>
+              <h1>Cuenta y sincronización</h1>
+              <p>Consulta el hogar conectado y decide si este dispositivo comparte la lista.</p>
             </div>
-            <div className={`account-sync-status sync-${syncPaused ? 'paused' : syncState}`}>
-              <span className="sync-indicator" />
-              <div><strong>{syncLabel}</strong><small>{syncMessage || (session ? 'Tu lista se comparte con los dispositivos de este hogar.' : 'Tus productos se guardan en este dispositivo.')}</small></div>
-            </div>
-            {session ? (
-              <>
-                <div className="account-section">
-                  <p className="field-label">CUENTA</p>
-                  <p className="account-user-email">{session.user.email}</p>
-                  <button className="auth-switch" type="button" onClick={() => void signOut()}>Cerrar sesión en este dispositivo</button>
-                </div>
-                <div className="account-section">
-                  <p className="field-label">SINCRONIZACIÓN</p>
-                  <div className="account-actions">
-                    <button className="add-button" type="button" onClick={() => void runSync(true)} disabled={!isOnline || syncState === 'syncing'}>{syncState === 'syncing' ? 'Sincronizando…' : 'Sincronizar ahora'}</button>
-                    <button className="secondary-action" type="button" onClick={toggleSyncPause} disabled={syncState === 'syncing' && !syncPaused}>{syncPaused ? 'Reanudar y sincronizar' : 'Pausar en este dispositivo'}</button>
-                  </div>
-                  <p className="auth-note">Pausar solo detiene la sincronización de este dispositivo. No elimina productos ni te saca del hogar.</p>
-                </div>
-                <div className="account-section">
-                  <p className="field-label">COMPARTIR HOGAR</p>
-                  <p className="auth-note">Invita a otras personas para compartir la lista o únete a un hogar con un código.</p>
-                  <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy || syncState !== 'synced'}>{inviteBusy ? 'Un momento…' : 'Crear código para invitar'}</button>
-                  {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
-                  <form className="auth-form invite-form" onSubmit={acceptHouseholdInvite}>
-                    <label className="field-label" htmlFor="household-invite-code">Código de invitación</label>
-                    <input id="household-invite-code" className="text-input" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código recibido" autoComplete="off" required />
-                    <button className="auth-switch" type="submit" disabled={inviteBusy || syncState !== 'synced' || !inviteCode.trim()}>Unirme a un hogar</button>
-                  </form>
-                  {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
-                  <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>
-                </div>
-              </>
-            ) : (
-              <div className="account-section">
-                <div className="auth-heading"><div><p className="eyebrow">SINCRONIZACIÓN FAMILIAR</p><h2>{authMode === 'login' ? 'Entra en tu cuenta' : 'Crea tu cuenta'}</h2></div><span className="auth-lock">🔐</span></div>
-                {!isSupabaseConfigured ? (
-                  <p className="auth-feedback error">Falta configurar la conexión con Supabase en esta instalación.</p>
+            <div className="account-page-grid">
+              <section className="account-page-card">
+                <p className="field-label">CUENTA</p>
+                {session ? (
+                  <>
+                    <p className="account-user-email">{session.user.email}</p>
+                    <p className="auth-note">La sesión permanece abierta aunque desconectes la sincronización de este dispositivo.</p>
+                    <button className="auth-switch" type="button" onClick={() => void signOut()}>Cerrar sesión</button>
+                  </>
                 ) : (
-                  <form className="auth-form" onSubmit={submitAuth}>
-                    <label className="field-label" htmlFor="account-email">Correo electrónico</label>
-                    <input id="account-email" className="text-input" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="tu@correo.com" />
-                    <label className="field-label auth-password-label" htmlFor="account-password">Contraseña</label>
-                    <input id="account-password" className="text-input" type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required placeholder="Al menos 8 caracteres" />
-                    <button className="add-button" type="submit" disabled={authBusy || !sessionReady}>{authBusy ? 'Un momento…' : authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>
-                  </form>
+                  <>
+                    <div className="auth-heading"><div><p className="eyebrow">SINCRONIZACIÓN FAMILIAR</p><h2>{authMode === 'login' ? 'Entra en tu cuenta' : 'Crea tu cuenta'}</h2></div><span className="auth-lock">🔐</span></div>
+                    {!isSupabaseConfigured ? <p className="auth-feedback error">Falta configurar la conexión con Supabase en esta instalación.</p> : (
+                      <form className="auth-form" onSubmit={submitAuth}>
+                        <label className="field-label" htmlFor="account-email">Correo electrónico</label>
+                        <input id="account-email" className="text-input" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="tu@correo.com" />
+                        <label className="field-label auth-password-label" htmlFor="account-password">Contraseña</label>
+                        <input id="account-password" className="text-input" type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required placeholder="Al menos 8 caracteres" />
+                        <button className="add-button" type="submit" disabled={authBusy || !sessionReady}>{authBusy ? 'Un momento…' : authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>
+                      </form>
+                    )}
+                    {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
+                    {authMessage && <p className="auth-feedback" role="status">{authMessage}</p>}
+                    {isSupabaseConfigured && <button className="auth-switch" type="button" onClick={() => { setAuthMode((mode) => mode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthMessage('') }}>{authMode === 'login' ? '¿Aún no tienes cuenta? Crear una cuenta' : 'Ya tengo cuenta. Iniciar sesión'}</button>}
+                  </>
                 )}
-                {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
-                {authMessage && <p className="auth-feedback" role="status">{authMessage}</p>}
-                {isSupabaseConfigured && <button className="auth-switch" type="button" onClick={() => { setAuthMode((mode) => mode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthMessage('') }}>{authMode === 'login' ? '¿Aún no tienes cuenta? Crear una cuenta' : 'Ya tengo cuenta. Iniciar sesión'}</button>}
-                <p className="auth-note">La lista seguirá disponible sin conexión. Al iniciar sesión, se vinculará a tu hogar y se sincronizará con tus otros dispositivos.</p>
-              </div>
-            )}
+              </section>
+              {session && (
+                <>
+                  <section className="account-page-card">
+                    <p className="field-label">ESTADO DE SINCRONIZACIÓN</p>
+                    <div className={`account-sync-status sync-${syncDisconnected ? 'disconnected' : syncPaused ? 'paused' : syncState}`}>
+                      <span className="sync-indicator" />
+                      <div><strong>{syncLabel}</strong><small>{syncMessage || (syncDisconnected ? 'Este dispositivo no envía ni recibe cambios.' : syncPaused ? 'La sincronización está detenida temporalmente.' : 'La lista se comparte con los dispositivos conectados a este hogar.')}</small></div>
+                    </div>
+                    <div className="sync-details">
+                      <div><span>Hogar</span><strong>{household.name}</strong></div>
+                      <div><span>Lista compartida</span><strong>{list.name}</strong></div>
+                      <div><span>Conexión</span><strong>{isOnline ? 'Internet disponible' : 'Sin conexión a Internet'}</strong></div>
+                    </div>
+                    <div className="account-actions">
+                      {syncDisconnected ? <button className="add-button" type="button" onClick={connectSync} disabled={!isOnline || syncState === 'syncing'}>Conectar con este hogar</button> : (
+                        <>
+                          <button className="add-button" type="button" onClick={() => void runSync(true)} disabled={!isOnline || syncState === 'syncing'}>{syncState === 'syncing' ? 'Sincronizando…' : 'Sincronizar ahora'}</button>
+                          <button className="secondary-action" type="button" onClick={toggleSyncPause} disabled={syncState === 'syncing' && !syncPaused}>{syncPaused ? 'Reanudar sincronización' : 'Pausar temporalmente'}</button>
+                          <button className="danger-action" type="button" onClick={() => void disconnectSync()} disabled={syncState === 'syncing'}>Desvincular este dispositivo</button>
+                        </>
+                      )}
+                    </div>
+                    <p className="auth-note">Desvincular detiene el envío y la recepción de cambios solo en este dispositivo. No borra la lista compartida, no elimina tu cuenta y no afecta a los demás miembros. Para volver a compartir, pulsa «Conectar con este hogar».</p>
+                  </section>
+                  <section className="account-page-card">
+                    <p className="field-label">COMPARTIR HOGAR</p>
+                    <p className="auth-note">Invita a otras personas para compartir la lista o únete a un hogar con un código.</p>
+                    <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy || syncState !== 'synced' || syncDisconnected || syncPaused}>{inviteBusy ? 'Un momento…' : 'Crear código para invitar'}</button>
+                    {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
+                    <form className="auth-form invite-form" onSubmit={acceptHouseholdInvite}>
+                      <label className="field-label" htmlFor="household-invite-code">Código de invitación</label>
+                      <input id="household-invite-code" className="text-input" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código recibido" autoComplete="off" required />
+                      <button className="auth-switch" type="submit" disabled={inviteBusy || syncState !== 'synced' || syncDisconnected || syncPaused || !inviteCode.trim()}>Unirme a un hogar</button>
+                    </form>
+                    {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
+                    <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>
+                  </section>
+                </>
+              )}
+            </div>
           </section>
-        )}
-
+        ) : (
+        <>
         <section className="welcome">
           <div>
             <p className="eyebrow">TU LISTA DE LA COMPRA</p>
@@ -605,6 +650,8 @@ function App() {
         </div>
 
         <footer className="app-footer"><span>Mi Compra</span><span>Pequeños gestos, compras más fáciles.</span></footer>
+        </>
+        )}
       </div>
     </main>
   )
