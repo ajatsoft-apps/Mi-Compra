@@ -53,6 +53,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validar sintaxis de la sonda Lidl
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        run: python -m py_compile scripts/probe_lidl_weekly_offers.py
       - name: Consultar ofertas Lidl (solo lectura)
         if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
         env:
