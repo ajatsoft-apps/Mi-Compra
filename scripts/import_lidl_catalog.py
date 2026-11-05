@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 API_URL = "https://www.lidl.es/q/api/search"
-PAGE_SIZE = 60
+PAGE_SIZE = 100
 PAGE_DELAY_SECONDS = 1.2
 HTML_DELAY_SECONDS = 1.5
 REGION_NAME = os.getenv("LIDL_REGION_NAME", "Castellón")
@@ -294,6 +294,9 @@ def price_record(
 
 
 def parse_online_product(item: dict[str, Any], captured_at: str) -> dict[str, Any] | None:
+    result_class = item.get("resultClass")
+    if result_class is not None and result_class != "product":
+        return None
     data = as_dict(as_dict(item.get("gridbox")).get("data"))
     if not data:
         data = as_dict(item.get("data"))
@@ -478,7 +481,7 @@ def fetch_catalog_page(sort: str, offset: int) -> tuple[list[dict[str, Any]], in
     params = urllib.parse.urlencode({
         "assortment": "ES",
         "locale": "es_ES",
-        "version": "2.0",
+        "version": "v2.0.0",
         "q": "",
         "sort": sort,
         "offset": str(offset),
