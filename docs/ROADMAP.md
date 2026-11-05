@@ -50,7 +50,7 @@ Cerrada a nivel de implementación y despliegue de pruebas. Supabase Auth, Postg
 
 ## Fase 6 — Catálogo, preferencias y compras
 
-Implementación inicial completada en la rama `fase-6/catalogo-productos`; pendiente superar CI final y pruebas funcionales con dos cuentas antes de integrar en la rama desplegada.
+Implementación integrada y desplegada en `fase-5/backend-supabase`. CI correcto y pruebas funcionales del usuario en varios dispositivos/cuentas satisfactorias.
 
 - [x] Catálogo familiar con nombre, marca, EAN/GTIN, formato, categoría y notas.
 - [x] Añadir productos del catálogo a la lista conservando la referencia al producto.
@@ -60,14 +60,25 @@ Implementación inicial completada en la rama `fase-6/catalogo-productos`; pendi
 - [x] Historial de compras compartido por hogar.
 - [x] RLS, índices, restricciones de integridad y Realtime para las nuevas tablas.
 - [x] Caché local del catálogo para consulta y uso al añadir a la lista sin conexión.
-- [ ] Pruebas multiusuario de permisos, sincronización en tiempo real y conflictos.
-- [ ] Pruebas en iPhone, Android y escritorio.
+- [x] Pruebas multiusuario de catálogo y sincronización en varios dispositivos realizadas por el usuario.
+- [x] Pruebas funcionales de uso del catálogo en dispositivos reales realizadas por el usuario.
+- [ ] Pruebas prolongadas de conflictos y permisos de gestión familiar.
 
 **Límite actual:** la consulta del catálogo puede utilizar su última caché local, pero editar productos, preferencias, equivalencias y registrar compras requiere conexión. El historial de precios aún no existe: el registro de compras no se debe interpretar como un precio actual ni como una oferta.
 
 ## Fase 7 — Fuentes de precios y promociones
 
-Pendiente: adaptadores por cadena, trazabilidad, vigencia y calidad de datos.
+En implementación inicial. OpenCesta se ha seleccionado como fuente de Mercadona: publica snapshots diarios en Parquet para cuatro zonas, incluida vlc1. Se han creado tablas ODbL separadas, carga transaccional, importador diario y pantalla de consulta en la PWA. Falta añadir el secreto de servicio a GitHub, ejecutar y validar la primera importación y confirmar si vlc1 corresponde al código postal 12006.
+
+- [x] Evaluar fuentes abiertas y condiciones de reutilización.
+- [x] Identificar limitaciones de cobertura para Mercadona, Lidl y Carrefour.
+- [x] Documentar la decisión de no automatizar endpoints privados de Mercadona sin autorización.
+- [ ] Comprobar cobertura real de CholloSúper y Open Prices en el ámbito 12006.
+- [ ] Diseñar tablas de observaciones de mercado, fuentes, ámbito geográfico y evidencia.
+- [ ] Implementar el primer adaptador con licencia reutilizable confirmada.
+- [ ] Permitir registrar observaciones propias sin confundirlas con un catálogo completo.
+- [x] Añadir pantalla de consulta de Mercadona con fecha, fuente, zona y licencia visibles.
+- [ ] Pruebas de calidad, caducidad, deduplicación y datos ausentes.
 
 ## Fase 8 — Comparador y optimizador
 
@@ -76,3 +87,6 @@ Pendiente: reglas deterministas, umbrales de ahorro, promociones condicionadas y
 ## Fase 9 — Voz, notificaciones y pruebas
 
 Pendiente: evaluar capacidades reales por plataforma, accesibilidad, offline y pruebas con la familia.
+
+
+**Activación pendiente:** añadir el secreto `SUPABASE_SERVICE_ROLE_KEY` en GitHub y ejecutar el workflow `Importar precios de Mercadona (OpenCesta)`. Hasta que termine correctamente, la pantalla indicará que todavía no hay snapshot importado.

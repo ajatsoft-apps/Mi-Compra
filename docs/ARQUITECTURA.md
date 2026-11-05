@@ -68,7 +68,15 @@ Cada precio debe conservar importe, unidad de medida, fecha de observación, fue
 
 ## Integraciones comerciales
 
-Cada cadena tendrá un adaptador desacoplado. La aplicación distinguirá datos de catálogo, precios, disponibilidad y promociones. No se presupone que exista una API pública estable para todas las cadenas; cada fuente se validará antes de automatizarla.
+Cada cadena tendrá un adaptador desacoplado. La aplicación distinguirá datos de catálogo, precios, disponibilidad y promociones. No se presupone que exista una API pública estable para todas las cadenas; cada fuente se validará antes de automatizarla. Los endpoints internos no documentados de una tienda no se tratarán como API autorizada por el mero hecho de responder sin autenticación. La integración automática de Mercadona queda bloqueada hasta confirmar permiso o disponer de un feed reutilizable.
+
+## Fuentes de precios y promociones
+
+Los datos externos se incorporan mediante adaptadores independientes, uno por fuente. La fuente conserva su identificador, URL, licencia, atribución, fecha de importación y estado. Cada observación de precio conserva el producto exacto o la categoría genérica, importe, unidad de referencia, moneda, establecimiento o zona, fecha de observación, vigencia, tipo de precio y condiciones de promoción.
+
+No se equipara una media de categoría con el precio de una referencia concreta. No se mezclan precios de zonas diferentes. Las promociones condicionadas (tarjeta, cantidad mínima, segunda unidad, packs) se almacenan como condiciones explícitas, no como un precio unitario engañoso. Los datos caducados se conservan para histórico, pero no se presentan como vigentes.
+
+Las fuentes con licencias incompatibles con el modelo de distribución se mantienen fuera del conjunto integrado hasta resolver sus obligaciones de atribución y compartir derivados. La evaluación y cobertura conocida se documenta en `docs/FUENTES_PRECIOS.md`. La primera integración usa snapshots de OpenCesta (ODbL-1.0) en tablas públicas separadas: `market_price_snapshots` y `market_price_observations`. `market_price_staging` recibe las cargas y una RPC transaccional publica solo snapshots completos. La PWA consulta la última captura; el importador diario descarga el Parquet de la release upstream y conserva 180 días de histórico. El secreto service-role solo existe en GitHub Actions, nunca en el cliente.
 
 ## Motor de comparación
 
