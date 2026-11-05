@@ -115,6 +115,19 @@ class LidlCatalogImportTests(unittest.TestCase):
         self.assertEqual(len(parser.products), 1)
         self.assertEqual(parser.products[0]["fullTitle"], "Patata granel")
 
+    def test_pagination_parser_collects_only_pagination_links(self):
+        markup = """
+        <a href="/producto/leche">Leche</a>
+        <nav aria-label="Paginación">
+          <a href="?page=1">1</a>
+          <a href="?page=2">2</a>
+          <a rel="next" href="?page=3">Siguiente</a>
+        </nav>
+        """
+        parser = importer.PaginationLinkParser()
+        parser.feed(markup)
+        self.assertEqual(parser.links, ["?page=1", "?page=2", "?page=3"])
+
     def test_region_resolver_uses_castellon_price_region(self):
         product = {
             "regionsV2": {
