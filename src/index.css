@@ -703,3 +703,39 @@ button { touch-action:manipulation; }
   .suggestion-copy strong { font-size:15px; }
   .suggestion-copy small { font-size:13px; }
 }
+
+
+/* Final mobile size adjustment: larger product photos and easier-to-read text */
+@media (max-width:760px) {
+  body { font-size:17px; }
+  .welcome p, .welcome > div > p:not(.eyebrow) { font-size:16px; }
+  .item-details strong { font-size:18px; }
+  .item-details span { font-size:15px; }
+  .item-price strong { font-size:15px; }
+  .add-panel .field-label { font-size:16px; }
+  .account-page-heading > p:last-child { font-size:16px; }
+  .account-page-card .field-label, .account-page-card .auth-note,
+  .management-empty, .management-person span { font-size:15px; }
+  .catalog-actions button, .catalog-tabs button { font-size:15px; }
+  .catalog-equivalence-row, .market-price-status span { font-size:14px; }
+  .market-result-main strong { font-size:16px; }
+  .market-result-main span, .market-result-main small { font-size:14px; }
+  .market-result-price strong { font-size:19px; }
+  .market-result-price span, .market-price-reduced, .market-price-disclaimer { font-size:14px; }
+  .product-suggestion {
+    grid-template-columns:40px 84px minmax(0,1fr) auto;
+    min-height:104px;
+    gap:11px;
+  }
+  .suggestion-image { width:84px; height:84px; }
+  .suggestion-copy strong { font-size:17px; line-height:1.35; }
+  .suggestion-copy small { font-size:14px; line-height:1.4; }
+  .suggestion-price { font-size:15px; }
+}
+@media (max-width:390px) {
+  .product-suggestion { grid-template-columns:36px 74px minmax(0,1fr); min-height:96px; gap:9px; }
+  .suggestion-image { width:74px; height:74px; }
+  .suggestion-copy strong { font-size:16px; }
+  .suggestion-copy small { font-size:14px; }
+  .suggestion-price { font-size:14px; }
+}
