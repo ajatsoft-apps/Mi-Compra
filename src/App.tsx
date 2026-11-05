@@ -69,6 +69,8 @@ function App() {
   const [householdInvites, setHouseholdInvites] = useState<HouseholdInviteInfo[]>([])
   const [householdManagementBusy, setHouseholdManagementBusy] = useState(false)
   const [householdManagementError, setHouseholdManagementError] = useState('')
+  const hasRemoteHousehold = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(household.id)
+  const isHouseholdOwner = householdMembers.some((member) => member.member_user_id === session?.user.id && member.member_role === 'owner')
 
   const workspaceRef = useRef({ household, list })
   const itemsRef = useRef(items)
@@ -270,7 +272,7 @@ function App() {
   }, [session?.user.id, list.id, syncPaused, syncDisconnected, hasInitialSync])
 
   useEffect(() => {
-    if (!session || !accountScreenOpen || syncDisconnected || !isOnline || !supabase) {
+    if (!session || !accountScreenOpen || syncDisconnected || !hasRemoteHousehold || !isOnline || !supabase) {
       if (!session || syncDisconnected) {
         setHouseholdMembers([])
         setHouseholdInvites([])
@@ -295,7 +297,7 @@ function App() {
       if (active) setHouseholdManagementBusy(false)
     })
     return () => { active = false }
-  }, [session?.user.id, accountScreenOpen, household.id, syncDisconnected, isOnline])
+  }, [session?.user.id, accountScreenOpen, household.id, hasRemoteHousehold, syncDisconnected, isOnline])
 
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
   const pendingCount = activeItems.filter((item) => !item.completed).length
@@ -752,7 +754,7 @@ function App() {
                     {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
                     {!syncDisconnected && <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones. Puedes revocar los que ya no necesites.</p>}
                   </section>
-                  {!syncDisconnected && (
+                  {!syncDisconnected && hasRemoteHousehold && (
                     <section className="account-page-card household-management-card">
                       <p className="field-label">MIEMBROS Y PERMISOS</p>
                       <h2>Personas de este hogar</h2>
@@ -765,7 +767,7 @@ function App() {
                                 <strong>{member.member_email || 'Cuenta sin correo visible'}</strong>
                                 <span>{member.member_role === 'owner' ? 'Propietario' : 'Miembro'} · Desde {new Date(member.member_joined_at).toLocaleDateString()}</span>
                               </div>
-                              {member.member_role === 'owner' ? <span className="role-pill owner-role">Propietario</span> : session?.user.id === householdMembers.find((entry) => entry.member_role === 'owner')?.member_user_id ? (
+                              {member.member_role === 'owner' ? <span className="role-pill owner-role">Propietario</span> : isHouseholdOwner ? (
                                 <div className="management-actions">
                                   <button type="button" className="management-link" disabled={inviteBusy} onClick={() => void transferHouseholdOwnership(member)}>Hacer propietario</button>
                                   <button type="button" className="management-remove" disabled={inviteBusy} onClick={() => void removeHouseholdMember(member)}>Retirar</button>
