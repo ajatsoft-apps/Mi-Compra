@@ -93,6 +93,8 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
       return
     }
 
+    const db = client as NonNullable<typeof client>
+
     let active = true
     const timer = window.setTimeout(() => {
       void searchProducts(term)
@@ -105,7 +107,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
       try {
         if (!snapshotCache.current) {
           snapshotCache.current = Promise.all([
-            client.from('market_price_snapshots')
+            db.from('market_price_snapshots')
               .select('id')
               .eq('source', 'opencesta')
               .eq('chain', 'mercadona')
@@ -113,7 +115,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
               .order('captured_at', { ascending: false })
               .limit(1)
               .maybeSingle(),
-            client.from('lidl_offer_snapshots')
+            db.from('lidl_offer_snapshots')
               .select('id,store_key,store_name,captured_at')
               .order('captured_at', { ascending: false })
               .limit(40),
@@ -136,7 +138,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
         }
         const { mercadonaSnapshotId, lidlSnapshots } = await snapshotCache.current
         const mercadonaPromise = mercadonaSnapshotId
-          ? client.from('market_price_observations')
+          ? db.from('market_price_observations')
               .select('sku,product_name,brand,unit_price,unit_size,size_format,is_pack,category,thumbnail_url')
               .eq('snapshot_id', mercadonaSnapshotId)
               .ilike('product_name', pattern)
@@ -145,7 +147,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
           : Promise.resolve({ data: [], error: null })
 
         const lidlPromise = lidlSnapshots.length > 0
-          ? client.from('lidl_offer_observations')
+          ? db.from('lidl_offer_observations')
               .select('snapshot_id,offer_id,title,brand,category,end_validity_date,price_box,image_url')
               .in('snapshot_id', lidlSnapshots.map((snapshot) => snapshot.id))
               .ilike('title', pattern)
