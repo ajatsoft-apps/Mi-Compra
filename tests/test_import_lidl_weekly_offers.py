@@ -41,10 +41,9 @@ class LidlOfferNormalizationTests(unittest.TestCase):
         value = MODULE.parse_datetime("2026-11-02")
         self.assertTrue(value.startswith("2026-11-02T"))
 
-    def test_household_id_must_be_explicit_uuid(self):
-        self.assertIsNotNone(MODULE.UUID_RE.fullmatch("123e4567-e89b-42d3-a456-426614174000"))
-        self.assertIsNone(MODULE.UUID_RE.fullmatch(""))
-        self.assertIsNone(MODULE.UUID_RE.fullmatch("all-households"))
+    def test_global_import_has_no_household_configuration(self):
+        self.assertNotIn("LIDL_HOUSEHOLD_ID", MODULE.__doc__ or "")
+        self.assertFalse(hasattr(MODULE, "UUID_RE"))
 
 
 if __name__ == "__main__":

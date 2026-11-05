@@ -32,10 +32,9 @@ jobs:
         run: |
           python -m py_compile scripts/import_lidl_weekly_offers.py tests/test_import_lidl_weekly_offers.py
           python -m unittest discover -s tests -p 'test_import_lidl_weekly_offers.py' -v
-      - name: Import household-scoped Lidl offers
+      - name: Import app-wide Lidl offers
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          LIDL_HOUSEHOLD_ID: ${{ secrets.LIDL_HOUSEHOLD_ID }}
           LIDL_STORE_KEYS: ${{ github.event.inputs.store_keys || 'ES0375,ES0380,ES0385' }}
         run: python scripts/import_lidl_weekly_offers.py
