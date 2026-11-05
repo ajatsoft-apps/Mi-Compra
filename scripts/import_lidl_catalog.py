@@ -27,6 +27,7 @@ from typing import Any
 
 API_URL = "https://www.lidl.es/q/api/search"
 PAGE_SIZE = 100
+FOOD_SEARCH_TERMS = ("leche", "queso", "yogur", "pollo", "pescado", "pan", "arroz", "pasta", "aceite", "tomate", "patata", "fruta", "verdura", "cafe", "embutido", "jamon", "galletas", "chocolate", "agua", "zumo", "conservas", "legumbres", "cereales")
 PAGE_DELAY_SECONDS = 1.2
 HTML_DELAY_SECONDS = 1.5
 REGION_NAME = os.getenv("LIDL_REGION_NAME", "Castellón")
