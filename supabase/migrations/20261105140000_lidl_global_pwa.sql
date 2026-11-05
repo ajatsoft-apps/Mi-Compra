@@ -20,19 +20,19 @@ begin
   end if;
   if exists (
     select 1 from pg_constraint
-    where conrelid = 'public.lidl_offer_snapshots'::regclass
-      and conname = 'lidl_offer_snapshots_id_household_id_key'
-  ) then
-    alter table public.lidl_offer_snapshots
-      drop constraint lidl_offer_snapshots_id_household_id_key;
-  end if;
-  if exists (
-    select 1 from pg_constraint
     where conrelid = 'public.lidl_offer_observations'::regclass
       and conname = 'lidl_offer_observations_snapshot_id_household_id_fkey'
   ) then
     alter table public.lidl_offer_observations
       drop constraint lidl_offer_observations_snapshot_id_household_id_fkey;
+  end if;
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.lidl_offer_snapshots'::regclass
+      and conname = 'lidl_offer_snapshots_id_household_id_key'
+  ) then
+    alter table public.lidl_offer_snapshots
+      drop constraint lidl_offer_snapshots_id_household_id_key;
   end if;
 end;
 $$;
