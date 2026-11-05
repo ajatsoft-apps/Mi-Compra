@@ -156,7 +156,8 @@ export async function synchronizeWorkspace(
   if (readItemsError) throw readItemsError
 
   const remoteById = new Map((remoteBefore as RemoteItem[]).map((item) => [item.id, item]))
-  const pendingWrites: Record<string, unknown>[] = []
+  const pendingInserts: Record<string, unknown>[] = []
+  const pendingUpdates: Array<{ id: string; values: Record<string, unknown> }> = []
   const idRemap: Record<string, string> = {}
 
   for (const sourceItem of localItems) {
@@ -172,29 +173,49 @@ export async function synchronizeWorkspace(
     const localIsNewer = !remote || item.updatedAt > toTimestamp(remote.updated_at, 0)
     if (!localIsNewer) continue
 
-    pendingWrites.push({
-      id: item.id,
-      household_id: household.id,
-      list_id: list.id,
+    const mutableValues = {
       product_name: item.name,
       quantity: item.quantity,
       unit: item.unit,
       category: item.category,
       note: item.note,
       is_completed: item.completed,
-      created_by: remote?.created_by ?? user.id,
       updated_by: user.id,
-      created_at: remote?.created_at ?? new Date(item.createdAt).toISOString(),
       updated_at: new Date(item.updatedAt).toISOString(),
       deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
-    })
+    }
+
+    if (remote) {
+      pendingUpdates.push({ id: item.id, values: mutableValues })
+    } else {
+      pendingInserts.push({
+        id: item.id,
+        household_id: household.id,
+        list_id: list.id,
+        ...mutableValues,
+        created_by: user.id,
+        created_at: new Date(item.createdAt).toISOString(),
+      })
+    }
   }
 
-  if (pendingWrites.length > 0) {
+  if (pendingInserts.length > 0) {
     const { error } = await client
       .from('shopping_list_items')
-      .upsert(pendingWrites, { onConflict: 'id' })
+      .insert(pendingInserts)
     if (error) throw error
+  }
+
+  for (const pending of pendingUpdates) {
+    const { data, error } = await client
+      .from('shopping_list_items')
+      .update(pending.values)
+      .eq('id', pending.id)
+      .eq('list_id', list.id)
+      .select('id')
+      .maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('No se pudo actualizar un producto de la lista compartida. Comprueba que sigues teniendo acceso al hogar.')
   }
 
   const { data: remoteAfter, error: finalReadError } = await client
