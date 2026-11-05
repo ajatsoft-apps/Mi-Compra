@@ -1,5 +1,7 @@
 export type Category = 'Fruta y verdura' | 'Lácteos' | 'Despensa' | 'Bebidas' | 'Hogar' | 'Otros'
 
+export type ShoppingStore = 'lidl' | 'mercadona' | 'general'
+
 export type ShoppingItem = {
   id: string
   householdId: string
@@ -14,6 +16,7 @@ export type ShoppingItem = {
   updatedAt: number
   deletedAt?: number | null
   catalogProductId?: string | null
+  supermarket?: ShoppingStore
 }
 
 export type Household = {

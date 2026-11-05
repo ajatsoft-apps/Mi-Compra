@@ -4,11 +4,12 @@ import type { Session } from '@supabase/supabase-js'
 import { loadLocalWorkspace, saveActiveWorkspace, saveLocalItems } from './data/localDatabase'
 import { pullRemoteItems, synchronizeWorkspace } from './data/syncService'
 import { isSupabaseConfigured, supabase } from './data/supabaseClient'
-import type { Category, Household, ShoppingItem, ShoppingList } from './domain/shopping'
+import type { Category, Household, ShoppingItem, ShoppingList, ShoppingStore } from './domain/shopping'
 import ProductCatalog, { type CatalogProduct } from './ProductCatalog'
 import MarketPrices from './MarketPrices'
 import BasketOptimizer from './BasketOptimizer'
 import LidlOffers from './LidlOffers'
+import ProductAutocomplete, { type ProductSuggestion } from './ProductAutocomplete'
 
 type Filter = 'Pendientes' | 'Todo' | 'Comprados'
 type SyncState = 'local' | 'syncing' | 'synced' | 'offline' | 'error' | 'paused'
@@ -19,6 +20,8 @@ const SYNC_PAUSED_KEY = 'mi-compra.sync-paused.v1'
 const SYNC_DISCONNECTED_KEY = 'mi-compra.sync-disconnected.v1'
 
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
+const firstEnabledStore: Exclude<ShoppingStore, 'general'> = 'lidl'
+const storeLabels: Record<ShoppingStore, string> = { lidl: 'Lidl', mercadona: 'Mercadona', general: 'Otros' }
 const categoryIcons: Record<Category, string> = {
   'Fruta y verdura': '🥑',
   Lácteos: '🥛',
@@ -39,6 +42,7 @@ function normalizeItemValue(value: string): string {
 
 function canMergeShoppingItems(existing: ShoppingItem, incoming: ShoppingItem): boolean {
   if (existing.completed || existing.deletedAt) return false
+  if ((existing.supermarket ?? 'general') !== (incoming.supermarket ?? 'general')) return false
   if (normalizeItemValue(existing.name) !== normalizeItemValue(incoming.name)) return false
   if (normalizeItemValue(existing.unit) !== normalizeItemValue(incoming.unit)) return false
   if (existing.catalogProductId && incoming.catalogProductId && existing.catalogProductId !== incoming.catalogProductId) return false
@@ -70,6 +74,7 @@ function App() {
   const [category, setCategory] = useState<Category>('Otros')
   const [note, setNote] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
+  const [selectedStore, setSelectedStore] = useState<ShoppingStore>(firstEnabledStore)
   const [accountScreenOpen, setAccountScreenOpen] = useState(false)
   const [catalogScreenOpen, setCatalogScreenOpen] = useState(false)
   const [marketPricesOpen, setMarketPricesOpen] = useState(false)
@@ -323,14 +328,17 @@ function App() {
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
   const pendingCount = activeItems.filter((item) => !item.completed).length
   const completedCount = activeItems.length - pendingCount
+  const storeItems = useMemo(() => activeItems.filter((item) => (item.supermarket ?? 'general') === selectedStore), [activeItems, selectedStore])
+  const storePendingCount = storeItems.filter((item) => !item.completed).length
+  const storeCompletedCount = storeItems.length - storePendingCount
   const visibleItems = useMemo(() => {
-    const filtered = activeItems.filter((item) => {
+    const filtered = storeItems.filter((item) => {
       if (filter === 'Pendientes') return !item.completed
       if (filter === 'Comprados') return item.completed
       return true
     })
     return filtered.sort((a, b) => Number(a.completed) - Number(b.completed) || b.createdAt - a.createdAt)
-  }, [activeItems, filter])
+  }, [storeItems, filter])
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -621,6 +629,7 @@ function App() {
       listId: list.id,
       deletedAt: null,
       catalogProductId: null,
+      supermarket: firstEnabledStore,
     }
     setItems((current) => {
       const existing = current.find((item) => canMergeShoppingItems(item, newItem))
@@ -663,6 +672,7 @@ function App() {
       listId: list.id,
       deletedAt: null,
       catalogProductId: product.id,
+      supermarket: selectedStore,
     }
     setItems((current) => {
       const existing = current.find((item) => canMergeShoppingItems(item, newItem))
@@ -681,6 +691,44 @@ function App() {
       return next
     })
     setCatalogScreenOpen(false)
+    setFilter('Pendientes')
+  }
+
+  function addStoreProductToList(product: ProductSuggestion) {
+    const now = Date.now()
+    const parsedQuantity = Number(quantity)
+    const selectedQuantity = Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1
+    const newItem: ShoppingItem = {
+      id: createItemId(),
+      name: product.name,
+      quantity: selectedQuantity,
+      unit: unit.trim() || 'ud.',
+      category: product.category,
+      note: [product.note, note.trim()].filter(Boolean).join(' · '),
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+      householdId: household.id,
+      listId: list.id,
+      deletedAt: null,
+      catalogProductId: null,
+      supermarket: product.supermarket,
+    }
+    setItems((current) => {
+      const existing = current.find((item) => canMergeShoppingItems(item, newItem))
+      const next = existing
+        ? current.map((item) => item.id === existing.id
+          ? { ...item, quantity: item.quantity + selectedQuantity, note: item.note.trim() || newItem.note, updatedAt: now }
+          : item)
+        : [newItem, ...current]
+      itemsRef.current = next
+      return next
+    })
+    setSelectedStore(product.supermarket)
+    setName('')
+    setQuantity('1')
+    setUnit('ud.')
+    setNote('')
     setFilter('Pendientes')
   }
 
@@ -709,7 +757,7 @@ function App() {
   function clearCompleted() {
     const now = Date.now()
     setItems((current) => {
-      const next = current.map((item) => item.completed && !item.deletedAt
+      const next = current.map((item) => item.completed && !item.deletedAt && (item.supermarket ?? 'general') === selectedStore
         ? { ...item, deletedAt: now, updatedAt: now }
         : item)
       itemsRef.current = next
@@ -936,7 +984,7 @@ function App() {
             </div>
             <form onSubmit={addItem}>
               <label className="field-label" htmlFor="product-name">Producto</label>
-              <input id="product-name" className="text-input product-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Leche semidesnatada" maxLength={120} required />
+              <ProductAutocomplete value={name} onChange={setName} onSelect={addStoreProductToList} disabled={!isReady || Boolean(storageError)} />
               <div className="quantity-row">
                 <div className="quantity-field">
                   <label className="field-label" htmlFor="product-quantity">Cantidad</label>
@@ -959,19 +1007,29 @@ function App() {
               </div>
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
-              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
+              <p className="autocomplete-fallback-note">Si no aparece en los catálogos, se añadirá como producto genérico a la primera lista activa: {storeLabels[firstEnabledStore]}.</p>
+              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}>Añadir como producto genérico <span>＋</span></button>
             </form>
           </section>
 
           <section className="panel list-panel">
             <div className="list-heading">
-              <div><p className="eyebrow">COMPRA FAMILIAR</p><h2>{list.name} <span className="item-count">{pendingCount}</span></h2></div>
+              <div><p className="eyebrow">LISTA POR SUPERMERCADO</p><h2>{storeLabels[selectedStore]} <span className="item-count">{storePendingCount}</span></h2></div>
               <span className="list-icon">🛒</span>
+            </div>
+            <div className="store-tabs" role="tablist" aria-label="Listas de compra">
+              {(['lidl', 'mercadona', 'general'] as ShoppingStore[]).map((store) => (
+                <button key={store} type="button" role="tab" aria-selected={selectedStore === store} className={selectedStore === store ? 'store-tab active' : 'store-tab'} onClick={() => setSelectedStore(store)}>
+                  <span className={'supermarket-mark ' + store}>{store === 'lidl' ? 'LIDL' : store === 'mercadona' ? 'M' : 'OTROS'}</span>
+                  {storeLabels[store]}
+                  <span className="store-tab-count">{activeItems.filter((item) => (item.supermarket ?? 'general') === store && !item.completed).length}</span>
+                </button>
+              ))}
             </div>
             <div className="filter-tabs" role="tablist" aria-label="Filtrar productos">
               {(['Pendientes', 'Todo', 'Comprados'] as Filter[]).map((option) => (
                 <button key={option} type="button" role="tab" aria-selected={filter === option} className={filter === option ? 'filter-tab active' : 'filter-tab'} onClick={() => setFilter(option)}>
-                  {option}{option === 'Pendientes' && <span>{pendingCount}</span>}
+                  {option}{option === 'Pendientes' && <span>{storePendingCount}</span>}
                 </button>
               ))}
             </div>
@@ -999,7 +1057,7 @@ function App() {
                 ))}
               </ul>
             )}
-            {completedCount > 0 && <button className="clear-button" type="button" onClick={clearCompleted}>Retirar productos comprados</button>}
+            {storeCompletedCount > 0 && <button className="clear-button" type="button" onClick={clearCompleted}>Retirar productos comprados</button>}
             <div className="list-footnote"><span>🔒</span> {storageError || (session ? 'Los cambios se guardan localmente y se sincronizan con el hogar.' : 'Los datos se guardan en este dispositivo. Conecta una cuenta para compartir la lista.')}</div>
           </section>
         </div>
