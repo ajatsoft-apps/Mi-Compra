@@ -5,6 +5,7 @@ import { loadLocalWorkspace, saveActiveWorkspace, saveLocalItems } from './data/
 import { pullRemoteItems, synchronizeWorkspace } from './data/syncService'
 import { isSupabaseConfigured, supabase } from './data/supabaseClient'
 import type { Category, Household, ShoppingItem, ShoppingList } from './domain/shopping'
+import ProductCatalog, { type CatalogProduct } from './ProductCatalog'
 
 type Filter = 'Pendientes' | 'Todo' | 'Comprados'
 type SyncState = 'local' | 'syncing' | 'synced' | 'offline' | 'error' | 'paused'
@@ -54,6 +55,7 @@ function App() {
   const [note, setNote] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
   const [accountScreenOpen, setAccountScreenOpen] = useState(false)
+  const [catalogScreenOpen, setCatalogScreenOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -588,6 +590,7 @@ function App() {
       householdId: household.id,
       listId: list.id,
       deletedAt: null,
+      catalogProductId: null,
     }
     setItems((current) => {
       const next = [newItem, ...current]
@@ -598,6 +601,35 @@ function App() {
     setQuantity('1')
     setUnit('ud.')
     setNote('')
+  }
+
+
+  function addCatalogProductToList(product: CatalogProduct) {
+    const now = Date.now()
+    const format = product.format_quantity ? product.format_quantity + ' ' + product.format_unit : ''
+    const details = [product.brand, format].filter(Boolean).join(' · ')
+    const newItem: ShoppingItem = {
+      id: createItemId(),
+      name: product.name,
+      quantity: 1,
+      unit: 'ud.',
+      category: categories.includes(product.category) ? product.category : 'Otros',
+      note: details,
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+      householdId: household.id,
+      listId: list.id,
+      deletedAt: null,
+      catalogProductId: product.id,
+    }
+    setItems((current) => {
+      const next = [newItem, ...current]
+      itemsRef.current = next
+      return next
+    })
+    setCatalogScreenOpen(false)
+    setFilter('Pendientes')
   }
 
   function toggleItem(id: string) {
@@ -659,6 +691,7 @@ function App() {
             <span><strong>Mi Compra</strong><small>La compra de casa, en orden</small></span>
           </a>
           <div className="topbar-actions">
+            {session && hasRemoteHousehold && !syncDisconnected && <button className="account-button" type="button" onClick={() => { setCatalogScreenOpen(true); setAccountScreenOpen(false) }}>📦 Catálogo</button>}
             <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => setAccountScreenOpen((open) => !open)}>
               <span className={syncState === 'synced' && !syncPaused ? 'online-dot' : 'status-dot'} />
               <span className="account-menu-label">{accountScreenOpen ? 'Volver a la lista' : session ? household.name : 'Cuenta y sincronización'}</span>
@@ -667,7 +700,13 @@ function App() {
           </div>
         </header>
 
-        {accountScreenOpen ? (
+        {catalogScreenOpen ? (
+          session && hasRemoteHousehold && !syncDisconnected ? (
+            <ProductCatalog householdId={household.id} userId={session.user.id} online={isOnline} onBack={() => setCatalogScreenOpen(false)} onAddToList={addCatalogProductToList} />
+          ) : (
+            <section className="account-page"><button className="back-to-list" type="button" onClick={() => setCatalogScreenOpen(false)}>← Volver a la lista</button><h1>Catálogo familiar</h1><p className="auth-note">Para usar el catálogo compartido, inicia sesión y conecta este dispositivo a un hogar.</p></section>
+          )
+        ) : accountScreenOpen ? (
           <section className="account-page" aria-label="Cuenta y sincronización">
             <div className="account-page-heading">
               <button className="back-to-list" type="button" onClick={() => setAccountScreenOpen(false)}>← Volver a la lista</button>
