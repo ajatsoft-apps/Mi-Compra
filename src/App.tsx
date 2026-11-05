@@ -467,9 +467,9 @@ function App() {
             <span><strong>Mi Compra</strong><small>La compra de casa, en orden</small></span>
           </a>
           <div className="topbar-actions">
-            <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => setAccountScreenOpen(true)>
+            <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => setAccountScreenOpen((open) => !open)}>
               <span className={syncState === 'synced' && !syncPaused ? 'online-dot' : 'status-dot'} />
-              <span className="account-menu-label">{session ? household.name : 'Cuenta y sincronización'}</span>
+              <span className="account-menu-label">{accountScreenOpen ? 'Volver a la lista' : session ? household.name : 'Cuenta y sincronización'}</span>
               <span aria-hidden="true">{accountScreenOpen ? '←' : '⚙'}</span>
             </button>
           </div>
