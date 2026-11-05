@@ -53,11 +53,20 @@ El registro redirige a la URL base de la aplicación (`import.meta.env.BASE_URL`
 
 ## Límites conocidos de esta fase
 
-- El cliente selecciona el primer hogar al que pertenece el usuario; no hay selector de varios hogares.
-- Todavía no existe interfaz para invitar miembros. La política RLS impide que un usuario se asigne el rol owner.
+- La interfaz mantiene un hogar activo por dispositivo. Si una cuenta pertenece a varios hogares, se incorpora al hogar del código aceptado más recientemente; todavía no existe selector visual entre hogares.
+- La gestión familiar permite crear y aceptar invitaciones, consultar miembros, revocar invitaciones propias (o cualquiera como propietario), retirar miembros como propietario y transferir la propiedad. La transferencia mantiene al propietario anterior como miembro.
 - La resolución de conflictos es last-write-wins por marca temporal. No hay historial ni edición colaborativa campo a campo.
 - La configuración de URL de producción y SMTP depende del dominio y proveedor de despliegue, que deben definirse en el Dashboard.
 - No se debe considerar validado el flujo entre dispositivos hasta probarlo con dos cuentas reales en dos navegadores/dispositivos.
+
+## Gestión familiar
+
+- Los códigos de invitación son aleatorios, se almacenan como hash y caducan a los 7 días; cada código admite hasta 10 incorporaciones.
+- La lista de miembros muestra correo, rol y fecha de incorporación, solo a otros miembros del mismo hogar.
+- Solo el propietario puede retirar a otros miembros o transferir la propiedad. No puede retirarse a sí mismo desde esa acción; debe usar «Desvincular cuenta».
+- Al retirar a un miembro también se revocan sus invitaciones pendientes.
+- El propietario puede transferir el rol a un miembro existente. El propietario anterior continúa como miembro.
+- Un miembro puede revocar las invitaciones que creó; el propietario puede revocar cualquiera.
 
 ## Seguridad
 

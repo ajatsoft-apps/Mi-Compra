@@ -8,6 +8,8 @@ import type { Category, Household, ShoppingItem, ShoppingList } from './domain/s
 
 type Filter = 'Pendientes' | 'Todo' | 'Comprados'
 type SyncState = 'local' | 'syncing' | 'synced' | 'offline' | 'error' | 'paused'
+type HouseholdMemberInfo = { member_user_id: string; member_email: string | null; member_role: 'owner' | 'member'; member_joined_at: string }
+type HouseholdInviteInfo = { invite_id: string; created_by: string; created_at: string; expires_at: string; revoked_at: string | null; use_count: number; max_uses: number }
 
 const SYNC_PAUSED_KEY = 'mi-compra.sync-paused.v1'
 const SYNC_DISCONNECTED_KEY = 'mi-compra.sync-disconnected.v1'
@@ -63,6 +65,12 @@ function App() {
   const [createdInvite, setCreatedInvite] = useState('')
   const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteMessage, setInviteMessage] = useState('')
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMemberInfo[]>([])
+  const [householdInvites, setHouseholdInvites] = useState<HouseholdInviteInfo[]>([])
+  const [householdManagementBusy, setHouseholdManagementBusy] = useState(false)
+  const [householdManagementError, setHouseholdManagementError] = useState('')
+  const hasRemoteHousehold = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(household.id)
+  const isHouseholdOwner = householdMembers.some((member) => member.member_user_id === session?.user.id && member.member_role === 'owner')
 
   const workspaceRef = useRef({ household, list })
   const itemsRef = useRef(items)
@@ -263,6 +271,34 @@ function App() {
     return () => { void client.removeChannel(channel) }
   }, [session?.user.id, list.id, syncPaused, syncDisconnected, hasInitialSync])
 
+  useEffect(() => {
+    if (!session || !accountScreenOpen || syncDisconnected || !hasRemoteHousehold || !isOnline || !supabase) {
+      if (!session || syncDisconnected) {
+        setHouseholdMembers([])
+        setHouseholdInvites([])
+      }
+      return
+    }
+    let active = true
+    setHouseholdManagementBusy(true)
+    setHouseholdManagementError('')
+    Promise.all([
+      supabase.rpc('list_household_members', { target_household_id: household.id }),
+      supabase.rpc('list_household_invites', { target_household_id: household.id }),
+    ]).then(([membersResult, invitesResult]) => {
+      if (!active) return
+      if (membersResult.error) throw membersResult.error
+      if (invitesResult.error) throw invitesResult.error
+      setHouseholdMembers((membersResult.data ?? []) as HouseholdMemberInfo[])
+      setHouseholdInvites((invitesResult.data ?? []) as HouseholdInviteInfo[])
+    }).catch((error: unknown) => {
+      if (active) setHouseholdManagementError(error instanceof Error ? error.message : 'No se pudo cargar la gestión del hogar.')
+    }).finally(() => {
+      if (active) setHouseholdManagementBusy(false)
+    })
+    return () => { active = false }
+  }, [session?.user.id, accountScreenOpen, household.id, hasRemoteHousehold, syncDisconnected, isOnline])
+
   const activeItems = useMemo(() => items.filter((item) => !item.deletedAt), [items])
   const pendingCount = activeItems.filter((item) => !item.completed).length
   const completedCount = activeItems.length - pendingCount
@@ -399,6 +435,80 @@ function App() {
     }
   }
 
+  async function refreshHouseholdManagement() {
+    if (!supabase) return
+    setHouseholdManagementBusy(true)
+    setHouseholdManagementError('')
+    try {
+      const [membersResult, invitesResult] = await Promise.all([
+        supabase.rpc('list_household_members', { target_household_id: household.id }),
+        supabase.rpc('list_household_invites', { target_household_id: household.id }),
+      ])
+      if (membersResult.error) throw membersResult.error
+      if (invitesResult.error) throw invitesResult.error
+      setHouseholdMembers((membersResult.data ?? []) as HouseholdMemberInfo[])
+      setHouseholdInvites((invitesResult.data ?? []) as HouseholdInviteInfo[])
+    } catch (error) {
+      setHouseholdManagementError(error instanceof Error ? error.message : 'No se pudo actualizar la gestión del hogar.')
+    } finally {
+      setHouseholdManagementBusy(false)
+    }
+  }
+
+  async function removeHouseholdMember(member: HouseholdMemberInfo) {
+    if (!supabase || !session || !window.confirm(`¿Quieres retirar a ${member.member_email || 'este miembro'} del hogar? Dejará de acceder a la lista compartida.`)) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    try {
+      const { error } = await supabase.rpc('remove_household_member', {
+        target_household_id: household.id,
+        target_user_id: member.member_user_id,
+      })
+      if (error) throw error
+      setInviteMessage('Miembro retirado. Sus invitaciones pendientes también se han revocado.')
+      await refreshHouseholdManagement()
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo retirar al miembro.')
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
+  async function transferHouseholdOwnership(member: HouseholdMemberInfo) {
+    if (!supabase || !window.confirm(`Vas a transferir la propiedad del hogar a ${member.member_email || 'este miembro'}. Seguirás dentro como miembro y perderás los permisos de propietario. ¿Continuar?`)) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    try {
+      const { error } = await supabase.rpc('transfer_household_ownership', {
+        target_household_id: household.id,
+        target_user_id: member.member_user_id,
+      })
+      if (error) throw error
+      setInviteMessage('Propiedad del hogar transferida correctamente.')
+      await refreshHouseholdManagement()
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo transferir la propiedad.')
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
+  async function revokeHouseholdInvite(invitation: HouseholdInviteInfo) {
+    if (!supabase || !window.confirm('¿Revocar este código? Ya no se podrá utilizar para entrar en el hogar.')) return
+    setInviteBusy(true)
+    setInviteMessage('')
+    try {
+      const { error } = await supabase.rpc('revoke_household_invite', { target_invite_id: invitation.invite_id })
+      if (error) throw error
+      setInviteMessage('Código de invitación revocado.')
+      await refreshHouseholdManagement()
+    } catch (error) {
+      setInviteMessage(error instanceof Error ? error.message : 'No se pudo revocar el código.')
+    } finally {
+      setInviteBusy(false)
+    }
+  }
+
   async function createHouseholdInvite() {
     if (!supabase || !session) return
     setInviteBusy(true)
@@ -412,6 +522,7 @@ function App() {
       const invitation = Array.isArray(data) ? data[0] : data
       if (!invitation?.invite_code) throw new Error('Supabase no devolvió un código de invitación.')
       setCreatedInvite(invitation.invite_code)
+      await refreshHouseholdManagement()
       try {
         await navigator.clipboard.writeText(invitation.invite_code)
         setInviteMessage('Código copiado. Compártelo con las personas que quieras añadir al hogar.')
@@ -641,8 +752,56 @@ function App() {
                       <button className="auth-switch" type="submit" disabled={inviteBusy || !isOnline || (!syncDisconnected && (syncState !== 'synced' || syncPaused)) || !inviteCode.trim()}>Unirme a un hogar</button>
                     </form>
                     {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
-                    {!syncDisconnected && <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>}
+                    {!syncDisconnected && <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones. Puedes revocar los que ya no necesites.</p>}
                   </section>
+                  {!syncDisconnected && hasRemoteHousehold && (
+                    <section className="account-page-card household-management-card">
+                      <p className="field-label">MIEMBROS Y PERMISOS</p>
+                      <h2>Personas de este hogar</h2>
+                      <p className="auth-note">Los miembros pueden gestionar la lista y crear invitaciones. Solo el propietario puede retirar a otras personas o transferir la propiedad.</p>
+                      {householdManagementBusy ? <p className="management-empty">Actualizando miembros e invitaciones…</p> : householdManagementError ? <p className="auth-feedback error" role="alert">{householdManagementError}</p> : householdMembers.length === 0 ? <p className="management-empty">No se han podido recuperar los miembros del hogar.</p> : (
+                        <ul className="management-list">
+                          {householdMembers.map((member) => (
+                            <li className="management-row" key={member.member_user_id}>
+                              <div className="management-person">
+                                <strong>{member.member_email || 'Cuenta sin correo visible'}</strong>
+                                <span>{member.member_role === 'owner' ? 'Propietario' : 'Miembro'} · Desde {new Date(member.member_joined_at).toLocaleDateString()}</span>
+                              </div>
+                              {member.member_role === 'owner' ? <span className="role-pill owner-role">Propietario</span> : isHouseholdOwner ? (
+                                <div className="management-actions">
+                                  <button type="button" className="management-link" disabled={inviteBusy} onClick={() => void transferHouseholdOwnership(member)}>Hacer propietario</button>
+                                  <button type="button" className="management-remove" disabled={inviteBusy} onClick={() => void removeHouseholdMember(member)}>Retirar</button>
+                                </div>
+                              ) : <span className="role-pill">Miembro</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="management-subheading"><h3>Códigos de invitación</h3><span>{householdInvites.length}</span></div>
+                      {householdInvites.length === 0 ? <p className="management-empty">Todavía no hay invitaciones creadas.</p> : (
+                        <ul className="management-list invite-management-list">
+                          {householdInvites.map((invitation) => {
+                            const expired = Date.parse(invitation.expires_at) <= Date.now()
+                            const revoked = Boolean(invitation.revoked_at)
+                            const exhausted = invitation.use_count >= invitation.max_uses
+                            const status = revoked ? 'Revocado' : expired ? 'Caducado' : exhausted ? 'Agotado' : 'Activo'
+                            const canRevoke = !revoked && !expired && !exhausted && (invitation.created_by === session?.user.id || householdMembers.some((member) => member.member_user_id === session?.user.id && member.member_role === 'owner'))
+                            return (
+                              <li className="management-row" key={invitation.invite_id}>
+                                <div className="management-person">
+                                  <strong>{status} · {invitation.use_count}/{invitation.max_uses} usos</strong>
+                                  <span>Caduca {new Date(invitation.expires_at).toLocaleDateString()} · Creado {new Date(invitation.created_at).toLocaleDateString()}</span>
+                                </div>
+                                {canRevoke && <button type="button" className="management-remove" disabled={inviteBusy} onClick={() => void revokeHouseholdInvite(invitation)}>Revocar</button>}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                      {householdManagementError && <p className="auth-feedback error" role="alert">{householdManagementError}</p>}
+                      {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
+                    </section>
+                  )}
                 </>
               )}
             </div>

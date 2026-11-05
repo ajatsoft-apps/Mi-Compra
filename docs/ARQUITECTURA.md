@@ -18,7 +18,7 @@ Aplicación PWA privada para organizar la compra familiar, sincronizar una lista
 
 ## Backend previsto
 
-Supabase con PostgreSQL, Auth y Realtime. Las migraciones versionadas crean hogares, miembros, listas y productos, con aislamiento por hogar mediante RLS. Las funciones privilegiadas viven en el esquema privado `private`; la única RPC pública de creación de hogar es un wrapper SECURITY INVOKER. El cliente usa una clave publishable y nunca incluye claves privilegiadas.
+Supabase con PostgreSQL, Auth y Realtime. Las migraciones versionadas crean hogares, miembros, listas y productos, con aislamiento por hogar mediante RLS. Las funciones privilegiadas viven en el esquema privado `private`; las RPC públicas son wrappers SECURITY INVOKER y delegan en funciones SECURITY DEFINER que validan explícitamente la identidad, la pertenencia y el rol. El cliente usa una clave publishable y nunca incluye claves privilegiadas.
 
 ## Autenticación y sincronización
 
@@ -29,6 +29,16 @@ Supabase con PostgreSQL, Auth y Realtime. Las migraciones versionadas crean hoga
 - Los borrados se representan como tombstones `deleted_at` para propagarse entre dispositivos y evitar resurrecciones simples.
 - Realtime avisa de cambios remotos; al reconectar se vuelve a ejecutar la sincronización.
 - Conflictos simultáneos se resuelven por última marca `updated_at` (last-write-wins). No es un historial de versiones ni una resolución semántica.
+- Cada dispositivo mantiene un hogar activo; la base de datos permite que una cuenta pertenezca a más de un hogar, pero todavía no hay selector visual de hogares.
+
+## Gestión familiar
+
+- Los códigos de invitación contienen 192 bits aleatorios; solo se guarda su hash SHA-256. Caducan a los 7 días y permiten hasta 10 incorporaciones.
+- La RPC de miembros devuelve correo, rol y fecha de alta solo a miembros autenticados del hogar solicitado.
+- Los miembros pueden crear invitaciones. El creador puede revocar sus propios códigos y el propietario puede revocar cualquiera.
+- Solo el propietario puede retirar a otros miembros o transferir la propiedad. Retirar a alguien revoca también sus invitaciones activas.
+- Al transferir la propiedad, el propietario anterior permanece como miembro. Si el propietario abandona el hogar sin transferirlo manualmente, la función de salida asigna la propiedad al miembro más antiguo.
+- La revocación de acceso se aplica en el servidor mediante RLS y las RPC. Los datos que ya se descargaron pueden permanecer en el almacenamiento local del dispositivo retirado; no existe borrado remoto de cachés locales.
 
 ## Dominios funcionales
 
