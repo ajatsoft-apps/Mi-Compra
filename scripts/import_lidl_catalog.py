@@ -583,34 +583,66 @@ def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str
     records: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
     page_stats: list[dict[str, Any]] = []
     resolved_region_ids: set[str] = set()
-    for index, (page_name, url) in enumerate(PAGES.items()):
-        page_html = fetch_html(url)
-        parser = ProductAttributeParser()
-        parser.feed(page_html)
-        page_products = parser.products
-        before = len(records)
-        for product in page_products:
-            region_id = resolve_price_region(product, region_name)
-            if region_id:
-                resolved_region_ids.add(str(region_id))
-            for row in parse_page_product(product, page_name, captured_at, region_name):
-                key = (
-                    row["product_id"],
-                    row["source"],
-                    row["source_page"],
-                    row["price_type"],
-                    row["valid_from"],
-                )
-                records[key] = row
-        page_stats.append({
-            "page": page_name,
-            "url": url,
-            "html_bytes": len(page_html.encode("utf-8")),
-            "product_cards": len(page_products),
-            "unique_price_records_added": len(records) - before,
-        })
-        if index < len(PAGES) - 1:
-            time.sleep(HTML_DELAY_SECONDS)
+    max_category_pages = int(os.getenv("LIDL_CATEGORY_MAX_PAGES", "20"))
+    for page_name, root_url in PAGES.items():
+        pending = [root_url]
+        visited: set[str] = set()
+        page_number = 0
+        while pending and page_number < max_category_pages:
+            url = pending.pop(0)
+            normalized_url, _ = urllib.parse.urldefrag(url)
+            if normalized_url in visited:
+                continue
+            parsed_url = urllib.parse.urlparse(normalized_url)
+            if parsed_url.scheme != "https" or parsed_url.netloc != "www.lidl.es":
+                continue
+            visited.add(normalized_url)
+            page_number += 1
+            page_html = fetch_html(normalized_url)
+            product_parser = ProductAttributeParser()
+            product_parser.feed(page_html)
+            pagination_parser = PaginationLinkParser()
+            pagination_parser.feed(page_html)
+            before = len(records)
+            for product in product_parser.products:
+                region_id = resolve_price_region(product, region_name)
+                if region_id:
+                    resolved_region_ids.add(str(region_id))
+                for row in parse_page_product(product, page_name, captured_at, region_name):
+                    key = (
+                        row["product_id"],
+                        row["source"],
+                        row["source_page"],
+                        row["price_type"],
+                        row["valid_from"],
+                    )
+                    records[key] = row
+            discovered = []
+            for href in pagination_parser.links:
+                candidate = urllib.parse.urljoin(normalized_url, html.unescape(href))
+                candidate, _ = urllib.parse.urldefrag(candidate)
+                candidate_parts = urllib.parse.urlparse(candidate)
+                if candidate_parts.scheme == "https" and candidate_parts.netloc == "www.lidl.es" and candidate not in visited:
+                    discovered.append(candidate)
+            for candidate in discovered:
+                if candidate not in pending:
+                    pending.append(candidate)
+            page_stats.append({
+                "page": page_name,
+                "page_number": page_number,
+                "url": normalized_url,
+                "html_bytes": len(page_html.encode("utf-8")),
+                "product_cards": len(product_parser.products),
+                "pagination_links_found": len(discovered),
+                "unique_price_records_added": len(records) - before,
+            })
+            if pending:
+                time.sleep(HTML_DELAY_SECONDS)
+        if pending:
+            raise RuntimeError(
+                f"Pagination limit reached for {page_name}: "
+                f"{max_category_pages} pages visited and more pages remain."
+            )
     return list(records.values()), {"pages": page_stats}, sorted(resolved_region_ids)
 
 
