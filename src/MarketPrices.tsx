@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from './data/supabaseClient'
 
 type Snapshot = {
@@ -73,7 +74,7 @@ export default function MarketPrices({ onBack }: Props) {
     return () => { active = false }
   }, [])
 
-  async function searchProducts(event: React.FormEvent<HTMLFormElement>) {
+  async function searchProducts(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const term = query.trim()
     if (!supabase || !snapshot) return
