@@ -39,7 +39,7 @@ jobs:
       - name: Import Lidl online catalogue and store offers
         run: python scripts/import_lidl_catalog.py
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIDL_REGION_NAME: Castellón
           LIDL_CATALOG_MIN_PRODUCTS: '6000'
