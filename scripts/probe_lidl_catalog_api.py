@@ -140,6 +140,117 @@ def fetch(query: str, sort: str | None, offset: int = 0) -> dict[str, Any]:
     }
 
 
+
+def fetch_catalog_page(sort: str, offset: int) -> dict[str, Any]:
+    params = {
+        "assortment": "ES",
+        "locale": "es_ES",
+        "version": "2.0",
+        "q": "",
+        "sort": sort,
+        "offset": str(offset),
+        "fetchsize": "60",
+    }
+    url = API_URL + "?" + urllib.parse.urlencode(params)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "*/*",
+            "Accept-Language": "es-ES,es;q=0.9",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status < 200 or response.status >= 300:
+            raise RuntimeError(f"Unexpected HTTP {response.status} at offset {offset}")
+        payload = json.loads(response.read().decode("utf-8"))
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        raise RuntimeError(f"Invalid catalogue page at offset {offset}")
+    return payload
+
+
+def crawl_full_catalog() -> dict[str, Any]:
+    products_by_id: dict[str, dict[str, Any]] = {}
+    passes: list[dict[str, Any]] = []
+    reported_totals: set[int] = set()
+    duplicate_records = 0
+
+    for sort in ("price", "price-desc"):
+        offset = 0
+        page_sizes: list[int] = []
+        returned = 0
+        page_count = 0
+        while page_count < 250:
+            payload = fetch_catalog_page(sort, offset)
+            items = payload["items"]
+            total = int(payload.get("numFound") or 0)
+            if total:
+                reported_totals.add(total)
+            page_size = len(items)
+            page_sizes.append(page_size)
+            page_count += 1
+            returned += page_size
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                product = parse_product(item)
+                if not product or not product.get("product_id"):
+                    continue
+                product_id = product["product_id"]
+                if product_id in products_by_id:
+                    duplicate_records += 1
+                    continue
+                products_by_id[product_id] = product
+            if page_size == 0 or offset + page_size >= total:
+                break
+            offset += page_size
+            time.sleep(1.2)
+        else:
+            raise RuntimeError(f"Pagination safety limit reached for sort={sort}")
+        passes.append({
+            "sort": sort,
+            "reported_total": total,
+            "pages": page_count,
+            "records_returned": returned,
+            "page_sizes": page_sizes,
+            "max_page_size": max(page_sizes, default=0),
+        })
+
+    products = list(products_by_id.values())
+    categories: dict[str, int] = {}
+    for product in products:
+        category = str(product.get("category") or "Sin categoría")
+        categories[category] = categories.get(category, 0) + 1
+    categories = dict(sorted(categories.items(), key=lambda item: (-item[1], item[0])))
+
+    return {
+        "passes": passes,
+        "reported_totals": sorted(reported_totals),
+        "unique_products": len(products),
+        "duplicate_records_ignored": duplicate_records,
+        "with_price": sum(product.get("price_eur") is not None for product in products),
+        "with_brand": sum(bool(product.get("brand")) for product in products),
+        "with_packaging": sum(bool(product.get("packaging")) for product in products),
+        "with_image": sum(bool(product.get("image_url")) for product in products),
+        "with_ean": sum(bool(product.get("ean")) for product in products),
+        "category_counts": categories,
+        "sample_food_products": [
+            {
+                "id": product.get("product_id"),
+                "name": product.get("name"),
+                "category": product.get("category"),
+                "brand": product.get("brand"),
+                "price": product.get("price_eur"),
+                "packaging": product.get("packaging"),
+                "ean": product.get("ean"),
+                "image": product.get("image_url"),
+            }
+            for product in products
+            if any(token in str(product.get("category") or "").casefold()
+                   for token in ("fruta", "verdura", "carne", "pescado", "yogur", "pan", "arroz", "conserva", "refresco", "galleta"))
+        ][:60],
+    }
+
 def main() -> int:
     report: dict[str, Any] = {
         "source": "Lidl Spain storefront search endpoint",
@@ -162,6 +273,8 @@ def main() -> int:
             time.sleep(1.5)
 
         empty_searches = [item for item in report["requests"] if item["query"] == ""]
+        print("Starting full read-only catalogue pagination check…")
+        report["full_catalog"] = crawl_full_catalog()
         report["summary"] = {
             "search_api_responds": True,
             "empty_query_reported_total": max(
