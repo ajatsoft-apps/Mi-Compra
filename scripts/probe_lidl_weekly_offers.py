@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""Read-only probe of Lidl Spain's weekly-offers API.
+
+Uses a normal HTTP client without login, cookies, tokens, browser impersonation,
+or anti-bot workarounds.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+import unicodedata
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+STORES_URL = "https://stores.lidlplus.com/api/v4/ES"
+OFFERS_URL = "https://offers.lidlplus.com/app/api/v4/ES/{store_key}/offers"
+POSTAL_CODE = os.getenv("LIDL_POSTAL_CODE", "12006").strip()
+OUTPUT = Path(os.getenv("LIDL_PROBE_OUTPUT", "lidl-offers-probe.json"))
+
+
+def get_json(url: str) -> Any:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Accept-Language": "es-ES,es;q=0.9",
+            "User-Agent": "MiCompra-LidlOffersProbe/1.0",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP {response.status} from {url}")
+        return json.loads(response.read().decode("utf-8"))
+
+
+def normalize(value: Any) -> str:
+    value = unicodedata.normalize("NFKD", str(value or "").casefold())
+    return "".join(char for char in value if not unicodedata.combining(char))
+
+
+def summarize_store(store: dict[str, Any]) -> dict[str, Any]:
+    location = store.get("location") or {}
+    return {
+        "store_key": store.get("storeKey"),
+        "name": store.get("name"),
+        "postal_code": store.get("postalCode"),
+        "locality": store.get("locality"),
+        "province": store.get("province"),
+        "latitude": location.get("latitude") if isinstance(location, dict) else None,
+        "longitude": location.get("longitude") if isinstance(location, dict) else None,
+    }
+
+
+def main() -> int:
+    result: dict[str, Any] = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "country": "ES",
+        "postal_code_query": POSTAL_CODE,
+        "transport": "urllib; no login, cookies, tokens or impersonation",
+    }
+    try:
+        stores = get_json(STORES_URL)
+        if not isinstance(stores, list):
+            raise RuntimeError("Store endpoint did not return a JSON array")
+
+        matches = [
+            store
+            for store in stores
+            if isinstance(store, dict)
+            and POSTAL_CODE in re.sub(r"\D", "", str(store.get("postalCode", "")))
+            and store.get("storeKey")
+        ]
+        match_method = "postal_code"
+
+        if not matches:
+            matches = [
+                store
+                for store in stores
+                if isinstance(store, dict)
+                and "castellon de la plana" in normalize(store.get("locality"))
+                and store.get("storeKey")
+            ]
+            match_method = "same_city_fallback"
+
+        if not matches:
+            matches = [
+                store
+                for store in stores
+                if isinstance(store, dict)
+                and "castellon" in normalize(store.get("province"))
+                and store.get("storeKey")
+            ]
+            match_method = "province_fallback"
+
+        result["store_catalog_count"] = len(stores)
+        result["match_method"] = match_method
+        result["matching_store_count"] = len(matches)
+        result["matching_stores"] = [summarize_store(store) for store in matches[:20]]
+
+        if not matches:
+            result["status"] = "no_matching_store"
+            OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 2
+
+        stores_to_probe = matches[:5]
+        store_results: list[dict[str, Any]] = []
+        for store in stores_to_probe:
+            store_summary = summarize_store(store)
+            payload = get_json(
+                OFFERS_URL.format(store_key=str(store["storeKey"]))
+            )
+            offers = payload.get("offers", []) if isinstance(payload, dict) else []
+            if not isinstance(offers, list):
+                raise RuntimeError(
+                    f"Offers endpoint did not return an array for {store['storeKey']}"
+                )
+
+            field_counts: dict[str, int] = {}
+            ean_keys = {"ean", "gtin", "codeInput", "barcode", "productEan"}
+            ean_count = 0
+            normalized_offers: list[dict[str, Any]] = []
+
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+                for key, value in offer.items():
+                    if value not in (None, "", [], {}):
+                        field_counts[key] = field_counts.get(key, 0) + 1
+                if any(offer.get(key) for key in ean_keys):
+                    ean_count += 1
+
+                normalized_offers.append(
+                    {
+                        "id": offer.get("id"),
+                        "title": offer.get("title"),
+                        "brand": offer.get("brand"),
+                        "category": offer.get("category"),
+                        "offer_type": offer.get("offerType"),
+                        "redemption_channel": offer.get("redemptionChannel"),
+                        "product_ids": offer.get("productIds"),
+                        "start_validity_date": offer.get("startValidityDate"),
+                        "end_validity_date": offer.get("endValidityDate"),
+                        "price_box": offer.get("priceBox"),
+                        "packaging": offer.get("packaging"),
+                        "price_per_unit": offer.get("pricePerUnit"),
+                        "ean_fields": {
+                            key: offer.get(key) for key in ean_keys if offer.get(key)
+                        },
+                    }
+                )
+
+            store_results.append(
+                {
+                    **store_summary,
+                    "offer_count": len(normalized_offers),
+                    "offers_with_explicit_ean": ean_count,
+                    "nonempty_field_counts": field_counts,
+                    "offers": normalized_offers,
+                }
+            )
+
+        result.update(
+            {
+                "status": "ok",
+                "stores_probed": len(store_results),
+                "total_offer_count": sum(item["offer_count"] for item in store_results),
+                "store_results": store_results,
+            }
+        )
+        OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        print(
+            json.dumps(
+                {
+                    key: value
+                    for key, value in result.items()
+                    if key != "store_results"
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        for item in store_results:
+            print(
+                f"{item['store_key']} {item['name']}: "
+                f"{item['offer_count']} offers, "
+                f"{item['offers_with_explicit_ean']} explicit EANs"
+            )
+        print(f"Saved full results to {OUTPUT}")
+        return 0
+    except urllib.error.HTTPError as exc:
+        result.update(
+            {"status": "http_error", "http_status": exc.code, "error": str(exc)}
+        )
+    except Exception as exc:
+        result.update({"status": "error", "error": str(exc)})
+
+    OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

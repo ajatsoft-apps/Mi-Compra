@@ -48,3 +48,25 @@ jobs:
         run: npm audit --omit=dev --audit-level=moderate
       - name: Comprobar tipos y compilar
         run: npm run build
+      - name: Configurar Python para la sonda Lidl
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validar sintaxis de la sonda Lidl
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        run: python -m py_compile scripts/probe_lidl_weekly_offers.py
+      - name: Consultar ofertas Lidl (solo lectura, hasta cinco tiendas)
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        env:
+          LIDL_POSTAL_CODE: '12006'
+          LIDL_PROBE_OUTPUT: lidl-offers-probe.json
+        run: python scripts/probe_lidl_weekly_offers.py
+      - name: Guardar resultado de la sonda Lidl
+        if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[LIDL PROBE]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: lidl-weekly-offers-probe
+          path: lidl-offers-probe.json
+          if-no-files-found: warn
+          retention-days: 7

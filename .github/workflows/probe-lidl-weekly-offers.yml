@@ -1,0 +1,40 @@
+name: Probe Lidl weekly offers (read-only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      postal_code:
+        description: Spanish postal code used to select a Lidl store
+        required: true
+        default: "12006"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Probe public Lidl API
+        env:
+          LIDL_POSTAL_CODE: ${{ inputs.postal_code }}
+          LIDL_PROBE_OUTPUT: lidl-offers-probe.json
+        run: python scripts/probe_lidl_weekly_offers.py
+
+      - name: Upload probe result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lidl-weekly-offers-probe
+          path: lidl-offers-probe.json
+          if-no-files-found: warn
+          retention-days: 7
