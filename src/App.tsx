@@ -468,14 +468,14 @@ function App() {
               <span className="auth-lock">⌂</span>
             </div>
             <p className="auth-note">Crea un código para que otra persona se una con su propia cuenta, o introduce el código que te hayan enviado. Los cambios de todos aparecerán en la misma lista.</p>
-            <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy}>
-              {inviteBusy ? 'Un momento…' : 'Crear código para invitar'}
+            <button className="add-button" type="button" onClick={() => void createHouseholdInvite()} disabled={inviteBusy || syncState !== 'synced'}>
+              {inviteBusy ? 'Un momento…' : syncState !== 'synced' ? 'Esperando sincronización…' : 'Crear código para invitar'}
             </button>
             {createdInvite && <div className="invite-code" aria-label="Código de invitación"><strong>{createdInvite}</strong></div>}
             <form className="auth-form invite-form" onSubmit={acceptHouseholdInvite}>
               <label className="field-label" htmlFor="household-invite-code">Código de invitación</label>
               <input id="household-invite-code" className="text-input" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Pega aquí el código recibido" autoComplete="off" required />
-              <button className="auth-switch" type="submit" disabled={inviteBusy || !inviteCode.trim()}>Unirme a un hogar</button>
+              <button className="auth-switch" type="submit" disabled={inviteBusy || syncState !== 'synced' || !inviteCode.trim()}>Unirme a un hogar</button>
             </form>
             {inviteMessage && <p className="auth-feedback" role="status">{inviteMessage}</p>}
             <p className="auth-note">Los códigos caducan a los 7 días y admiten hasta 10 incorporaciones.</p>
