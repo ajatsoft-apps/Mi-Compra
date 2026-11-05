@@ -61,7 +61,15 @@ function mapCategory(value: string | null | undefined): Category {
 
 function lidlPriceNumber(value: Record<string, unknown> | null): number | null {
   if (!value) return null
-  const whole = String(value.largePartNumeric ?? '').replace(/[^0-9]/g, '')
+  const currency = [value.largePartSymbol, value.smallPartSymbol].map(String).join('')
+  if (!currency.includes('€')) return null
+  const wholeValue = String(value.largePartNumeric ?? '').trim()
+  if (!wholeValue) return null
+  if (/[.,]/.test(wholeValue)) {
+    const parsed = Number(wholeValue.replace(',', '.').replace(/[^0-9.]/g, ''))
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  const whole = wholeValue.replace(/[^0-9]/g, '')
   if (!whole) return null
   const decimals = String(value.smallPartNumeric ?? '').replace(/[^0-9]/g, '').slice(0, 2).padEnd(2, '0')
   const parsed = Number(whole + '.' + decimals)
