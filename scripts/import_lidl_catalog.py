@@ -478,16 +478,18 @@ def parse_page_product(
     return records
 
 
-def fetch_catalog_page(sort: str, offset: int) -> tuple[list[dict[str, Any]], int]:
-    params = urllib.parse.urlencode({
+def fetch_catalog_page(sort: str | None, offset: int, query: str = "") -> tuple[list[dict[str, Any]], int]:
+    params_data = {
         "assortment": "ES",
         "locale": "es_ES",
         "version": "v2.0.0",
-        "q": "",
-        "sort": sort,
+        "q": query,
         "offset": str(offset),
         "fetchsize": str(PAGE_SIZE),
-    })
+    }
+    if sort:
+        params_data["sort"] = sort
+    params = urllib.parse.urlencode(params_data)
     request = urllib.request.Request(
         API_URL + "?" + params,
         headers={
@@ -593,6 +595,59 @@ def crawl_online_catalog(max_pages: int | None, captured_at: str) -> tuple[dict[
             "unique_products_so_far": len(products),
         })
     return products, reported_total, {"passes": pass_stats}
+
+
+def is_food_product(row: dict[str, Any]) -> bool:
+    category = normalized_text(row.get("category"))
+    markers = (
+        "aliment", "comida", "food", "bebida", "drink", "lact", "leche",
+        "fruta", "verdura", "carne", "pescado", "panader", "despensa",
+        "conserv", "huevo", "queso", "pasta", "arroz",
+    )
+    return any(marker in category for marker in markers)
+
+
+def crawl_food_searches(captured_at: str) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    products: dict[str, dict[str, Any]] = {}
+    query_stats: list[dict[str, Any]] = []
+    max_pages_per_term = int(os.getenv("LIDL_FOOD_SEARCH_MAX_PAGES", "2"))
+    for term in FOOD_SEARCH_TERMS:
+        offset = 0
+        pages = 0
+        seen = 0
+        accepted = 0
+        reported_total = 0
+        while pages < max_pages_per_term:
+            items, total = fetch_catalog_page(None, offset, term)
+            pages += 1
+            reported_total = max(reported_total, total)
+            seen += len(items)
+            for item in items:
+                row = parse_online_product(as_dict(item), captured_at)
+                if not row or not is_food_product(row):
+                    continue
+                accepted += 1
+                key = row["product_id"]
+                previous = products.get(key)
+                if previous is None:
+                    products[key] = row
+                else:
+                    for field, value in row.items():
+                        if value not in (None, "", [], {}):
+                            previous[field] = value
+            if not items or offset + len(items) >= total:
+                break
+            offset += len(items)
+            time.sleep(PAGE_DELAY_SECONDS)
+        query_stats.append({
+            "query": term,
+            "reported_total": reported_total,
+            "pages": pages,
+            "results_seen": seen,
+            "food_products_accepted": accepted,
+        })
+        time.sleep(PAGE_DELAY_SECONDS)
+    return products, {"queries": query_stats, "unique_food_products": len(products)}
 
 
 def crawl_store_pages(captured_at: str, region_name: str) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
@@ -780,6 +835,16 @@ def main() -> int:
         online_stats: dict[str, Any] = {}
         if not args.skip_online_catalog:
             online_products, reported_total, online_stats = crawl_online_catalog(args.max_pages, captured_at)
+        food_search_products, food_search_stats = crawl_food_searches(captured_at)
+        for product_id, row in food_search_products.items():
+            previous = online_products.get(product_id)
+            if previous is None:
+                online_products[product_id] = row
+            else:
+                for field, value in row.items():
+                    if value not in (None, "", [], {}):
+                        previous[field] = value
+        report["food_search"] = food_search_stats
         report["online_catalog"] = {
             **online_stats,
             "reported_total": reported_total,
