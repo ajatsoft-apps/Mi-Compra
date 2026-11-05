@@ -139,7 +139,10 @@ function App() {
         currentWorkspace.list,
         startingItems,
       )
-      const latestLocalItems = itemsRef.current
+      const latestLocalItems = itemsRef.current.map((item) => ({
+        ...item,
+        id: result.idRemap[item.id] ?? item.id,
+      }))
       const mergedById = new Map(result.items.map((item) => [item.id, item]))
       for (const localItem of latestLocalItems) {
         const remoteItem = mergedById.get(localItem.id)
