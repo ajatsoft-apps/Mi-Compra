@@ -149,6 +149,9 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
             }
           })
           .sort((a, b) => {
+            if (a.supermarket !== b.supermarket) {
+              return a.supermarket === 'lidl' ? -1 : 1
+            }
             if (a.priceNumber === null && b.priceNumber === null) return a.name.localeCompare(b.name, 'es')
             if (a.priceNumber === null) return 1
             if (b.priceNumber === null) return -1
