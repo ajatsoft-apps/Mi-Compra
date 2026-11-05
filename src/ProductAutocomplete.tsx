@@ -209,18 +209,17 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
               type="button"
               role="option"
               aria-selected="false"
-              className="product-suggestion"
+              className={'product-suggestion ' + product.supermarket}
               key={product.id}
               onClick={() => onSelect(product)}
               disabled={disabled}
             >
-              <span className={'supermarket-mark ' + product.supermarket}>{product.supermarket === 'lidl' ? 'LIDL' : 'M'}</span>
               {product.imageUrl
                 ? <img className="suggestion-image" src={product.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
                 : <span className="suggestion-image suggestion-placeholder">🛒</span>}
               <span className="suggestion-copy">
                 <strong>{product.name}</strong>
-                <small>{[product.brand, product.format, product.supermarket === 'lidl' ? 'Lidl' : 'Mercadona'].filter(Boolean).join(' · ')}</small>
+                <small>{[product.brand, product.format].filter(Boolean).join(' · ')}</small>
               </span>
               <strong className="suggestion-price">{product.priceText}</strong>
             </button>
