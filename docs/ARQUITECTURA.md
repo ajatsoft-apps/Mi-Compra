@@ -40,6 +40,15 @@ Supabase con PostgreSQL, Auth y Realtime. Las migraciones versionadas crean hoga
 - Al transferir la propiedad, el propietario anterior permanece como miembro. Si el propietario abandona el hogar sin transferirlo manualmente, la función de salida asigna la propiedad al miembro más antiguo.
 - La revocación de acceso se aplica en el servidor mediante RLS y las RPC. Los datos que ya se descargaron pueden permanecer en el almacenamiento local del dispositivo retirado; no existe borrado remoto de cachés locales.
 
+## Catálogo, preferencias y compras
+
+- `household_products` identifica productos por hogar, con marca, código de barras, contenido del envase, unidad, categoría y notas. Los productos se archivan en vez de borrarse para conservar referencias e historial.
+- `shopping_list_items.catalog_product_id` enlaza una línea de compra con el producto de catálogo del mismo hogar mediante clave foránea compuesta.
+- `household_product_preferences` guarda marca y formato preferidos y si se aceptan sustitutos.
+- `household_product_equivalences` conserva relaciones explícitas entre productos (`same_product` o `accepted_substitute`). No se deducen equivalencias por similitud del nombre.
+- `purchase_history` guarda una instantánea del nombre, marca y formato junto con cantidad, precio pagado, establecimiento y fecha. Es un registro histórico del precio pagado, no un precio vigente de tienda.
+- Las cuatro tablas están protegidas por RLS y se publican en Realtime. La caché del catálogo en el navegador permite consultar productos conocidos sin conexión; las mutaciones del catálogo y el registro de compras requieren conexión.
+
 ## Dominios funcionales
 
 1. Familia, miembros y permisos.
