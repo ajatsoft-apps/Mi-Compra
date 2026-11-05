@@ -95,14 +95,26 @@ def main() -> None:
     })
 
     results = []
-    for index, query in enumerate(QUERIES):
-        result = search(query, session)
-        results.append(result)
-        print(
-            f"{query}: HTTP {result['http_status']} · "
-            f"{result['parsed_products']} productos interpretados · "
-            f"total informado={result['reported_total']}"
-        )
+    probe_error = None
+    for query in QUERIES:
+        try:
+            result = search(query, session)
+            results.append(result)
+            print(
+                f"{query}: HTTP {result['http_status']} · "
+                f"{result['parsed_products']} productos interpretados · "
+                f"total informado={result['reported_total']}"
+            )
+        except requests.HTTPError as error:
+            response = error.response
+            probe_error = {
+                "query": query,
+                "http_status": response.status_code if response is not None else None,
+                "reason": str(error),
+                "response_excerpt": response.text[:1000] if response is not None else None,
+            }
+            print(f"Endpoint no accesible para {query!r}: {probe_error['reason']}")
+            break
         time.sleep(1.5)
 
     all_products = [product for result in results for product in result["products"]]
@@ -112,6 +124,7 @@ def main() -> None:
         "read_only": True,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "queries": results,
+        "probe_error": probe_error,
         "summary": {
             "queries_ok": len(results),
             "products_sampled": len(all_products),
@@ -127,6 +140,8 @@ def main() -> None:
     output.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print("Resumen:", json.dumps(summary["summary"], ensure_ascii=False))
     print(f"Muestra JSON guardada en {output}")
+    if probe_error:
+        raise SystemExit("La consulta a Lidl fue rechazada; se conserva el diagnóstico y no se importa nada.")
     if not all_products:
         raise SystemExit("Lidl respondió, pero no se pudieron interpretar productos; no se considera validado.")
 
