@@ -84,6 +84,7 @@ export default function MarketPrices({ onBack }: Props) {
     }
     setSearching(true)
     setError('')
+    setResults([])
     setSearched(true)
     const pattern = '%' + term.replace(/[\\%_]/g, '\\$&') + '%'
     const { data, error: searchError } = await supabase
