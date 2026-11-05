@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import os
 import pathlib
 import tarfile
@@ -172,6 +171,9 @@ def main() -> None:
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
     if not supabase_url or not service_key:
         raise RuntimeError("Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el entorno.")
+
+    stale_before = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=2)).isoformat()
+    supabase_request("DELETE", "market_price_staging", service_key, params={"created_at": f"lt.{stale_before}"})
 
     tag, download_url, release_url = latest_release()
     print(f"OpenCesta release: {tag}")
