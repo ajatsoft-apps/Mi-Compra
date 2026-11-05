@@ -165,3 +165,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .household-pill { font-size: 9px; }
   .auth-panel { padding: 18px 15px; }
 }
+
+.family-panel { max-width: 100%; margin: 14px 0 20px; }
+.family-panel > .add-button { max-width: 330px; }
+.invite-code { margin-top: 12px; padding: 13px 15px; border: 1px dashed #b7cdb3; border-radius: 10px; background: #f5f9f2; color: #355d3d; overflow-wrap: anywhere; }
+.invite-code strong { font: 700 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .7px; }
+.invite-form { margin-top: 17px; padding-top: 15px; border-top: 1px solid #edf0ea; }
+.invite-form .auth-switch { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 15px; border: 1px solid #dce8d8; border-radius: 9px; background: #f3f7ef; text-decoration: none; }
+.invite-form .auth-switch:disabled { opacity: .45; cursor: not-allowed; }
