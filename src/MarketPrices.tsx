@@ -107,7 +107,7 @@ export default function MarketPrices({ onBack }: Props) {
     <section className="account-page market-prices-page" aria-label="Precios de supermercados">
       <div className="account-page-heading">
         <button className="back-to-list" type="button" onClick={onBack}>← Volver a la lista</button>
-        <p className="eyebrow">COMPARACIÓN DE PRECIOS</p>
+        <p className="eyebrow">PRECIOS DE REFERENCIA</p>
         <h1>Precios de Mercadona</h1>
         <p>Busca productos y consulta el precio de la última captura disponible para la zona de datos vlc1.</p>
       </div>
@@ -116,7 +116,7 @@ export default function MarketPrices({ onBack }: Props) {
         <div className="market-price-status">
           <div><span>Última captura</span><strong>{formatDate(snapshot.captured_at)}</strong></div>
           <div><span>Productos del snapshot</span><strong>{snapshot.row_count.toLocaleString('es-ES')}</strong></div>
-          <div><span>Zona</span><strong>vlc1 · Valencia</strong></div>
+          <div><span>Zona</span><strong>vlc1 · zona del feed</strong></div>
         </div>
       )}
 
