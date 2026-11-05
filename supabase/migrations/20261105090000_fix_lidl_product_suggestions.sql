@@ -13,11 +13,13 @@ begin
   where n.nspname = 'public'
     and p.proname = 'search_shopping_product_suggestions';
 
-  if v_definition is null or position(v_old in v_definition) = 0 then
+  if v_definition is null then
+    raise exception 'search_shopping_product_suggestions was not found';
+  elsif position(v_old in v_definition) > 0 then
+    v_definition := replace(v_definition, v_old, v_new);
+    execute v_definition;
+  elsif position('and o.source <> ''online''' in v_definition) = 0 then
     raise exception 'Unexpected definition of search_shopping_product_suggestions';
   end if;
-
-  v_definition := replace(v_definition, v_old, v_new);
-  execute v_definition;
 end
 $migration$;
