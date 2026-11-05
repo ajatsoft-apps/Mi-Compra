@@ -435,12 +435,13 @@ def parse_page_product(
 
 def fetch_catalog_page(sort: str, offset: int) -> tuple[list[dict[str, Any]], int]:
     params = urllib.parse.urlencode({
-        "query": "*",
         "assortment": "ES",
+        "locale": "es_ES",
         "version": "2.0",
-        "fetchsize": str(PAGE_SIZE),
-        "offset": str(offset),
+        "q": "",
         "sort": sort,
+        "offset": str(offset),
+        "fetchsize": str(PAGE_SIZE),
     })
     request = urllib.request.Request(
         API_URL + "?" + params,
@@ -448,9 +449,6 @@ def fetch_catalog_page(sort: str, offset: int) -> tuple[list[dict[str, Any]], in
             "Accept": "*/*",
             "Accept-Language": "es-ES,es;q=0.9",
             "User-Agent": USER_AGENT,
-            "Origin": "https://www.lidl.es",
-            "Referer": "https://www.lidl.es/",
-            "X-Requested-With": "XMLHttpRequest",
         },
     )
     payload = fetch_json_request(request)
