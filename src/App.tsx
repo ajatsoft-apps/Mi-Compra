@@ -443,7 +443,7 @@ function App() {
               <div className="quantity-row">
                 <div className="quantity-field">
                   <label className="field-label" htmlFor="product-quantity">Cantidad</label>
-                  <input id="product-quantity" className="text-input" type="number" min="0.001" step="0.1" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+                  <input id="product-quantity" className="text-input" type="number" min="0.001" step="any" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
                 </div>
                 <div className="unit-field">
                   <label className="field-label" htmlFor="product-unit">Unidad</label>
@@ -462,7 +462,7 @@ function App() {
               </div>
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
-              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
+              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}>Añadir a la lista <span>＋</span></button>
             </form>
           </section>
 
