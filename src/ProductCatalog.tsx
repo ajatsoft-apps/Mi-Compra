@@ -12,6 +12,8 @@ export type CatalogProduct = {
   format_unit: string
   category: Category
   notes: string
+  preferredBrand?: string
+  preferredFormat?: string
 }
 type Preference = {
   product_id: string
@@ -254,7 +256,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
                     <li className="management-row catalog-product-row" key={product.id}>
                       <div className="management-person"><strong>{product.name}</strong><span>{[product.brand, product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '', product.barcode ?? ''].filter(Boolean).join(' · ') || product.category}</span></div>
                       <div className="management-actions catalog-actions">
-                        <button type="button" className="management-link" onClick={() => onAddToList(product)}>Añadir</button>
+                        <button type="button" className="management-link" onClick={() => onAddToList({ ...product, preferredBrand: preferences[product.id]?.preferred_brand, preferredFormat: preferences[product.id]?.preferred_format })}>Añadir</button>
                         <button type="button" className="management-link" disabled={!online || busy} onClick={() => { setSelectedProduct(product.id); const p = preferences[product.id]; setPreferenceBrand(p?.preferred_brand ?? product.brand); setPreferenceFormat(p?.preferred_format ?? (product.format_quantity ? product.format_quantity + ' ' + product.format_unit : '')); setAllowSubstitutes(p?.allow_substitutes ?? true) }}>Preferencias</button>
                         <button type="button" className="management-link" disabled={!online || busy} onClick={() => editProduct(product)}>Editar</button>
                         <button type="button" className="management-remove" disabled={!online || busy} onClick={() => void archiveProduct(product)}>Archivar</button>
