@@ -33,9 +33,23 @@ class ScriptParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.scripts: list[dict[str, Any]] = []
+        self.product_attributes: list[dict[str, Any]] = []
         self.current: dict[str, Any] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for key, value in attrs:
+            if value and any(marker in value.casefold() for marker in ('productid', 'regionsprices', 'pricebox')):
+                decoded = value
+                for marker in ('productId', 'regionsPrices', 'priceBox'):
+                    position = decoded.find(marker)
+                    if position >= 0:
+                        break
+                self.product_attributes.append({
+                    "tag": tag,
+                    "attribute": key,
+                    "length": len(value),
+                    "snippet": decoded[max(0, position - 180):position + 900] if position >= 0 else decoded[:900],
+                })
         if tag.lower() == "script":
             attributes = dict(attrs)
             self.current = {
@@ -106,6 +120,7 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
         "page_title": title,
         "script_count": len(scripts),
         "scripts": script_summaries,
+        "product_attributes": parser.product_attributes[:30],
         "product_snippets": snippets,
         "has_product_json": any(item["contains_product_name"] for item in script_summaries),
     }
