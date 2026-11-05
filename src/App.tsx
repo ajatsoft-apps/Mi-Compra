@@ -837,7 +837,7 @@ function App() {
       id: createItemId(),
       name: product.name,
       quantity: selectedQuantity,
-      unit: unit.trim() || 'ud.',
+      unit: product.unit !== 'ud.' ? product.unit : unit.trim() || 'ud.',
       category: product.category,
       note: [product.note, note.trim()].filter(Boolean).join(' · '),
       completed: false,
