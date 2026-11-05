@@ -238,7 +238,9 @@ as $$
         case when source = 'online' then 'Precio de tienda online' else 'Oferta de tienda' end) as note,
       case when source = 'online' then 'Lidl online' else 'Lidl tienda' end as store_name,
       captured_at,
-      case when source = 'online' then 2 else 1 end as source_priority
+      case when source = 'online' then 2 else 1 end as source_priority,
+      packaging,
+      requires_lidl_plus
     from lidl_catalog_ranked
     where product_position = 1
   ),
@@ -282,7 +284,9 @@ as $$
       c.product_name, c.brand, c.packaging, c.category, c.image_url, c.requires_lidl_plus
   ),
   lidl_candidates as (
-    select * from lidl_offer_products
+    select supermarket, product_id, product_name, brand, format, category,
+      unit_price, price_box, image_url, note, store_name, captured_at, source_priority
+    from lidl_offer_products
     union all
     select supermarket, product_id, product_name, brand, format, category,
       unit_price, price_box, image_url, note, store_name, captured_at, source_priority
