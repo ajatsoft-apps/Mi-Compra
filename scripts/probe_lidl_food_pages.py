@@ -40,8 +40,9 @@ class ScriptParser(HTMLParser):
         for key, value in attrs:
             if value and any(marker in value.casefold() for marker in ('productid', 'regionsprices', 'pricebox')):
                 decoded = value
+                position = -1
                 for marker in ('productId', 'regionsPrices', 'priceBox'):
-                    position = decoded.find(marker)
+                    position = decoded.casefold().find(marker.casefold())
                     if position >= 0:
                         break
                 self.product_attributes.append({
