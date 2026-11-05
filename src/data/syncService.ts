@@ -57,7 +57,7 @@ export async function synchronizeWorkspace(
   localHousehold: Household,
   localList: ShoppingList,
   localItems: ShoppingItem[],
-): Promise<{ household: Household; list: ShoppingList; items: ShoppingItem[] }> {
+): Promise<{ household: Household; list: ShoppingList; items: ShoppingItem[]; idRemap: Record<string, string> }> {
   if (!supabase) throw new Error('Supabase no está configurado en esta instalación.')
   const client = supabase
 
@@ -145,12 +145,15 @@ export async function synchronizeWorkspace(
 
   const remoteById = new Map((remoteBefore as RemoteItem[]).map((item) => [item.id, item]))
   const pendingWrites: Record<string, unknown>[] = []
+  const idRemap: Record<string, string> = {}
 
   for (const sourceItem of localItems) {
     const remote = remoteById.get(sourceItem.id)
+    const itemId = remote ? sourceItem.id : newLocalId()
+    if (itemId !== sourceItem.id) idRemap[sourceItem.id] = itemId
     const item: ShoppingItem = {
       ...sourceItem,
-      id: remote ? sourceItem.id : newLocalId(),
+      id: itemId,
       householdId: household.id,
       listId: list.id,
     }
@@ -193,7 +196,7 @@ export async function synchronizeWorkspace(
   await saveActiveWorkspace(household, list, true)
   await saveLocalItems(list.id, mergedItems)
 
-  return { household, list, items: mergedItems }
+  return { household, list, items: mergedItems, idRemap }
 }
 
 export async function pullRemoteItems(listId: string): Promise<ShoppingItem[]> {
