@@ -802,3 +802,76 @@ button { touch-action:manipulation; }
     grid-template-columns:80px minmax(0,1fr);
   }
 }
+
+
+/* Corrected autocomplete layout: image, flexible text, price */
+.product-suggestion {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(70px, auto);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1.5px solid #e4ebe1;
+  border-radius: 12px;
+}
+.product-suggestion.mercadona { border-color: #75b77a; }
+.product-suggestion.lidl { border-color: #e5bd35; }
+.product-suggestion .supermarket-mark { display: none; }
+.product-suggestion .suggestion-image {
+  display: block;
+  width: 64px;
+  height: 64px;
+  max-width: 100%;
+  flex: none;
+  object-fit: contain;
+  border-radius: 10px;
+}
+.product-suggestion .suggestion-copy {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 5px;
+}
+.product-suggestion .suggestion-copy strong,
+.product-suggestion .suggestion-copy small {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.product-suggestion .suggestion-price {
+  justify-self: end;
+  max-width: 112px;
+  text-align: right;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .product-suggestion {
+    grid-template-columns: 90px minmax(0, 1fr) minmax(76px, auto);
+    min-height: 110px;
+    gap: 12px;
+    padding: 9px;
+  }
+  .product-suggestion .suggestion-image {
+    width: 90px;
+    height: 90px;
+  }
+  .product-suggestion .suggestion-price { max-width: 108px; }
+}
+@media (max-width: 390px) {
+  .product-suggestion {
+    grid-template-columns: 76px minmax(0, 1fr) minmax(66px, auto);
+    min-height: 96px;
+    gap: 9px;
+    padding: 7px;
+  }
+  .product-suggestion .suggestion-image {
+    width: 76px;
+    height: 76px;
+  }
+  .product-suggestion .suggestion-price {
+    max-width: 82px;
+    font-size: 14px;
+  }
+}
