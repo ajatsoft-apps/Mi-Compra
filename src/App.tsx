@@ -66,6 +66,7 @@ function App() {
   const workspaceRef = useRef({ household, list })
   const itemsRef = useRef(items)
   const syncInFlightRef = useRef(false)
+  const syncAgainRef = useRef(false)
   const hasInitialSyncRef = useRef(false)
   const lastSyncedSnapshotRef = useRef('')
 
@@ -136,7 +137,11 @@ function App() {
   }, [])
 
   async function runSync(force = false, pausedAfterSync = syncPaused, disconnectedAfterSync = syncDisconnected) {
-    if (!session || !isReady || !isOnline || syncInFlightRef.current || ((syncPaused || syncDisconnected) && !force)) return
+    if (!session || !isReady || !isOnline || ((syncPaused || syncDisconnected) && !force)) return
+    if (syncInFlightRef.current) {
+      syncAgainRef.current = true
+      return
+    }
     syncInFlightRef.current = true
     setSyncState('syncing')
     setSyncMessage('')
@@ -195,6 +200,12 @@ function App() {
       }
     } finally {
       syncInFlightRef.current = false
+      if (syncAgainRef.current) {
+        syncAgainRef.current = false
+        if (session && isReady && isOnline && !syncPaused && !syncDisconnected) {
+          window.setTimeout(() => { void runSync() }, 150)
+        }
+      }
     }
   }
 
