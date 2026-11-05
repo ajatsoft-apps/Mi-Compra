@@ -46,7 +46,10 @@ const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebi
 const blankForm = { name: '', brand: '', barcode: '', format_quantity: '', format_unit: 'ud.', category: 'Otros' as Category, notes: '' }
 
 export default function ProductCatalog({ householdId, userId, online, onBack, onAddToList }: Props) {
-  const [products, setProducts] = useState<CatalogProduct[]>([])
+  const cacheKey = 'mi-compra.catalog.v1.' + householdId
+  const [products, setProducts] = useState<CatalogProduct[]>(() => {
+    try { return JSON.parse(window.localStorage.getItem(cacheKey) ?? '[]') as CatalogProduct[] } catch { return [] }
+  })
   const [preferences, setPreferences] = useState<Record<string, Preference>>({})
   const [equivalences, setEquivalences] = useState<Equivalence[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
@@ -83,6 +86,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
     if (purchasesResult.error) throw purchasesResult.error
     const nextProducts = (productsResult.data ?? []) as CatalogProduct[]
     setProducts(nextProducts)
+    try { window.localStorage.setItem(cacheKey, JSON.stringify(nextProducts)) } catch { /* El catálogo remoto sigue disponible aunque no quepa la caché. */ }
     setPreferences(Object.fromEntries((preferencesResult.data ?? []).map((p) => [p.product_id, p as Preference])))
     setEquivalences((equivalencesResult.data ?? []) as Equivalence[])
     setPurchases((purchasesResult.data ?? []) as Purchase[])
