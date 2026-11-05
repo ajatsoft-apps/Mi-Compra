@@ -304,3 +304,17 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
   .market-result-row { align-items: flex-start; gap: 9px; }
   .market-result-price strong { font-size: 15px; }
 }
+
+
+.optimizer-page { max-width: 960px; }
+.optimizer-results { max-width: 900px; margin: 0 auto; }
+.optimizer-total { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 10px; padding-bottom: 15px; border-bottom: 1px solid #edf0ea; }
+.optimizer-total > div { display: grid; gap: 5px; }
+.optimizer-total span { color: #879487; font-size: 11px; }
+.optimizer-total strong { color: #355f3f; font: 800 24px Manrope, sans-serif; }
+.optimizer-total small { max-width: 310px; color: #9aa49a; font-size: 10px; line-height: 1.5; text-align: right; }
+.optimizer-status { margin-top: 0; }
+@media (max-width: 600px) {
+  .optimizer-total { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .optimizer-total small { max-width: none; text-align: left; }
+}
