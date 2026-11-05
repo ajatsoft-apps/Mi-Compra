@@ -741,7 +741,7 @@ function App() {
           <div className="topbar-actions">
             <button className="account-button" type="button" onClick={() => { setMarketPricesOpen(true); setCatalogScreenOpen(false); setAccountScreenOpen(false) }}>💶 Precios</button>
             {session && hasRemoteHousehold && !syncDisconnected && <button className="account-button" type="button" onClick={() => { setCatalogScreenOpen(true); setMarketPricesOpen(false); setAccountScreenOpen(false) }}>📦 Catálogo</button>}
-            <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => setAccountScreenOpen((open) => !open)}>
+            <button className="account-button account-menu-trigger" type="button" aria-expanded={accountScreenOpen} onClick={() => { setMarketPricesOpen(false); setAccountScreenOpen((open) => !open) }}>
               <span className={syncState === 'synced' && !syncPaused ? 'online-dot' : 'status-dot'} />
               <span className="account-menu-label">{accountScreenOpen ? 'Volver a la lista' : session ? household.name : 'Cuenta y sincronización'}</span>
               <span aria-hidden="true">{accountScreenOpen ? '←' : '⚙'}</span>
