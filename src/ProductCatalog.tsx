@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { supabase } from './data/supabaseClient'
 import type { Category } from './domain/shopping'
 
-type Product = {
+export type CatalogProduct = {
   id: string
   name: string
   barcode: string | null
@@ -39,14 +39,14 @@ type Props = {
   userId: string
   online: boolean
   onBack: () => void
-  onAddToList: (product: Product) => void
+  onAddToList: (product: CatalogProduct) => void
 }
 
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
 const blankForm = { name: '', brand: '', barcode: '', format_quantity: '', format_unit: 'ud.', category: 'Otros' as Category, notes: '' }
 
 export default function ProductCatalog({ householdId, userId, online, onBack, onAddToList }: Props) {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<CatalogProduct[]>([])
   const [preferences, setPreferences] = useState<Record<string, Preference>>({})
   const [equivalences, setEquivalences] = useState<Equivalence[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
@@ -64,7 +64,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
   const [purchaseUnitPrice, setPurchaseUnitPrice] = useState('')
   const [purchaseTotal, setPurchaseTotal] = useState('')
   const [purchaseStore, setPurchaseStore] = useState('')
-  const [purchaseTarget, setPurchaseTarget] = useState<Product | null>(null)
+  const [purchaseTarget, setPurchaseTarget] = useState<CatalogProduct | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -81,7 +81,7 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
     if (preferencesResult.error) throw preferencesResult.error
     if (equivalencesResult.error) throw equivalencesResult.error
     if (purchasesResult.error) throw purchasesResult.error
-    const nextProducts = (productsResult.data ?? []) as Product[]
+    const nextProducts = (productsResult.data ?? []) as CatalogProduct[]
     setProducts(nextProducts)
     setPreferences(Object.fromEntries((preferencesResult.data ?? []).map((p) => [p.product_id, p as Preference])))
     setEquivalences((equivalencesResult.data ?? []) as Equivalence[])
@@ -134,13 +134,13 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
     setBusy(false)
   }
 
-  function editProduct(product: Product) {
+  function editProduct(product: CatalogProduct) {
     setEditingId(product.id)
     setForm({ name: product.name, brand: product.brand, barcode: product.barcode ?? '', format_quantity: product.format_quantity?.toString() ?? '', format_unit: product.format_unit, category: product.category, notes: product.notes })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function archiveProduct(product: Product) {
+  async function archiveProduct(product: CatalogProduct) {
     if (!supabase || !window.confirm('¿Archivar «' + product.name + '»? No aparecerá al añadir productos, pero se conservarán sus compras anteriores.')) return
     setBusy(true); setError('')
     const { error: updateError } = await supabase.from('household_products').update({ archived_at: new Date().toISOString() }).eq('id', product.id).eq('household_id', householdId)
