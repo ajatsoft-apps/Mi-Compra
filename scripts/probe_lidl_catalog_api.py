@@ -70,16 +70,17 @@ def parse_product(item: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def fetch(query: str, sort: str, offset: int = 0) -> dict[str, Any]:
+def fetch(query: str, sort: str | None, offset: int = 0) -> dict[str, Any]:
     params = {
         "assortment": "ES",
         "locale": "es_ES",
         "version": "2.0",
         "q": query,
-        "sort": sort,
         "offset": str(offset),
         "fetchsize": "100",
     }
+    if sort:
+        params["sort"] = sort
     url = API_URL + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
         url,
@@ -109,7 +110,11 @@ def fetch(query: str, sort: str, offset: int = 0) -> dict[str, Any]:
     ]
     return {
         "query": query,
-        "sort": sort,
+        "sort": sort or "default",
+        "master_query": payload.get("masterQuery"),
+        "result_type": payload.get("resultType"),
+        "details": payload.get("details"),
+        "facets": payload.get("facets"),
         "offset": offset,
         "reported_total": payload.get("numFound"),
         "returned_items": len(items),
@@ -119,7 +124,12 @@ def fetch(query: str, sort: str, offset: int = 0) -> dict[str, Any]:
         "with_brand": sum(bool(product["brand"]) for product in products),
         "with_packaging": sum(bool(product["packaging"]) for product in products),
         "with_ean": sum(bool(product["ean"]) for product in products),
-        "products_sample": products[:12],
+        "products_sample": products[:8],
+        "product_names": [product["name"] for product in products],
+        "category_counts": {
+            category: sum(1 for product in products if product["category"] == category)
+            for category in sorted({product["category"] for product in products if product["category"]})
+        },
         "response_keys": sorted(payload.keys()),
     }
 
@@ -134,7 +144,7 @@ def main() -> int:
         "requests": [],
     }
     try:
-        for query, sort in (("leche", "price"), ("", "price"), ("", "price-desc")):
+        for query, sort in (("leche", None), ("leche", "price"), ("", "price"), ("", "price-desc")):
             result = fetch(query, sort)
             report["requests"].append(result)
             print(
