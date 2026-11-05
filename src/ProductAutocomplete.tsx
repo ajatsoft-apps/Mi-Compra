@@ -12,6 +12,7 @@ export type ProductSuggestion = {
   category: Category
   priceText: string
   priceNumber: number | null
+  unit: string
   imageUrl: string | null
   note: string
 }
@@ -57,29 +58,38 @@ function cleanFormat(value: string | null): string {
 }
 
 function lidlPriceNumber(value: Record<string, unknown> | null): number | null {
-  if (!value) return null
-  const currency = [value.largePartSymbol, value.smallPartSymbol].map(String).join('')
-  if (!currency.includes('€')) return null
-  const wholeValue = String(value.largePartNumeric ?? '').trim()
-  if (!wholeValue) return null
-  if (/[.,]/.test(wholeValue)) {
-    const parsed = Number(wholeValue.replace(',', '.').replace(/[^0-9.]/g, ''))
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  const whole = wholeValue.replace(/[^0-9]/g, '')
-  if (!whole) return null
-  const decimals = String(value.smallPartNumeric ?? '').replace(/[^0-9]/g, '').slice(0, 2).padEnd(2, '0')
-  const parsed = Number(whole + '.' + decimals)
-  return Number.isFinite(parsed) ? parsed : null
+  if (!value || !String(value.priceSymbol ?? '').includes('€')) return null
+  const parsed = Number(value.largePartNumeric)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function lidlProductUnit(value: Record<string, unknown> | null): string {
+  const symbol = String(value?.priceSymbol ?? '').toLocaleLowerCase('es')
+  if (symbol.includes('/kg')) return 'kg'
+  if (symbol.includes('/l')) return 'L'
+  return 'ud.'
 }
 
 function formatLidlPrice(value: Record<string, unknown> | null): string {
   if (!value) return ''
-  return ['largePartNumeric', 'smallPartNumeric', 'largePartSymbol', 'smallPartSymbol']
-    .map((key) => value[key])
-    .filter((part) => part !== null && part !== undefined && String(part).trim() !== '')
-    .map(String)
-    .join(' ')
+  const current = lidlPriceNumber(value)
+  if (current === null) {
+    const message = String(value.discountMessage ?? '').trim()
+    return message
+  }
+
+  const symbol = String(value.priceSymbol ?? '€')
+  const amount = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(current)
+  const currentText = symbol === '€' ? euro.format(current) : amount + ' ' + symbol
+  const previous = Number(value.smallPartNumeric)
+  const previousText = Number.isFinite(previous) && previous > current
+    ? 'Antes ' + (symbol === '€' ? euro.format(previous) : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(previous) + ' ' + symbol)
+    : ''
+  const discount = String(value.discountMessage ?? '').trim()
+  return [currentText, previousText, discount].filter(Boolean).join(' · ')
 }
 
 export default function ProductAutocomplete({ value, disabled = false, onChange, onSelect }: Props) {
@@ -134,6 +144,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
               category: mapCategory(row.category),
               priceText,
               priceNumber: numericPrice,
+              unit: isLidl ? lidlProductUnit(row.price_box) : 'ud.',
               imageUrl: row.image_url,
               note: row.note ?? [row.brand, format].filter(Boolean).join(' · '),
             }
