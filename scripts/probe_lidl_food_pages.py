@@ -50,6 +50,7 @@ class ScriptParser(HTMLParser):
                     "attribute": key,
                     "length": len(value),
                     "snippet": decoded[max(0, position - 180):position + 900] if position >= 0 else decoded[:900],
+                    "value": value,
                 })
         if tag.lower() == "script":
             attributes = dict(attrs)
@@ -91,6 +92,58 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
     title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
     title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else None
 
+    parsed_products = []
+    category_counts: dict[str, int] = {}
+    for attribute in parser.product_attributes:
+        raw_value = attribute.get("value") or ""
+        try:
+            product = json.loads(raw_value)
+        except (json.JSONDecodeError, TypeError):
+            try:
+                import html as html_module
+                product = json.loads(html_module.unescape(raw_value))
+            except (json.JSONDecodeError, TypeError):
+                continue
+        if not isinstance(product, dict) or not product.get("productId"):
+            continue
+        keyfacts = product.get("keyfacts") or {}
+        category = keyfacts.get("wonCategoryPrimary") or ""
+        category_counts[category] = category_counts.get(category, 0) + 1
+        regions_v2 = product.get("regionsV2") or {}
+        regions_prices = product.get("regionsPrices") or {}
+        region_samples = []
+        for region_id, region_meta in list(regions_v2.items())[:4]:
+            region_price = regions_prices.get(str(region_id)) or {}
+            plus = region_price.get("currentLidlPlusPrice") or {}
+            price_data = plus.get("price") or region_price.get("price") or {}
+            region_samples.append({
+                "region_id": str(region_id),
+                "region_name": region_meta.get("regionName") if isinstance(region_meta, dict) else None,
+                "region_status": region_meta.get("status") if isinstance(region_meta, dict) else None,
+                "price_keys": sorted(region_price.keys()) if isinstance(region_price, dict) else [],
+                "price": price_data.get("price") if isinstance(price_data, dict) else None,
+                "old_price": price_data.get("oldPrice") if isinstance(price_data, dict) else None,
+                "packaging": (price_data.get("packaging") or {}).get("text") if isinstance(price_data, dict) else None,
+                "discount": (price_data.get("discount") or {}).get("percentageDiscount") if isinstance(price_data, dict) else None,
+            })
+        brand = product.get("brand") or {}
+        parsed_products.append({
+            "product_id": str(product.get("productId")),
+            "title": product.get("fullTitle") or keyfacts.get("fullTitle") or keyfacts.get("title"),
+            "brand": brand.get("name") if isinstance(brand, dict) else brand,
+            "category": category,
+            "analytics_category": keyfacts.get("analyticsCategory"),
+            "image_url": product.get("image"),
+            "product_url": ("https://www.lidl.es" + product["canonicalUrl"]) if str(product.get("canonicalUrl") or "").startswith("/") else product.get("canonicalUrl"),
+            "internal_codes": product.get("ians") or [],
+            "ean": product.get("ean") or product.get("gtin") or product.get("barcode"),
+            "store": product.get("store"),
+            "store_end_date": product.get("storeEndDate"),
+            "regions_with_prices": len(regions_prices),
+            "region_samples": region_samples,
+            "top_level_keys": sorted(product.keys()),
+        })
+
     script_summaries = []
     for script in scripts:
         text = script["text"]
@@ -121,7 +174,11 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
         "page_title": title,
         "script_count": len(scripts),
         "scripts": script_summaries,
-        "product_attributes": parser.product_attributes[:30],
+        "product_attribute_count": len(parser.product_attributes),
+        "parsed_product_count": len(parsed_products),
+        "unique_product_count": len({item["product_id"] for item in parsed_products}),
+        "category_counts": category_counts,
+        "products_sample": parsed_products[:20],
         "product_snippets": snippets,
         "has_product_json": any(item["contains_product_name"] for item in script_summaries),
     }
