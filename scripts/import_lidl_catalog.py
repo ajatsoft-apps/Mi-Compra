@@ -599,12 +599,16 @@ def crawl_online_catalog(max_pages: int | None, captured_at: str) -> tuple[dict[
 
 def is_food_product(row: dict[str, Any]) -> bool:
     category = normalized_text(row.get("category"))
+    if "non-food" in category or "non food" in category:
+        return False
     markers = (
-        "aliment", "comida", "food", "bebida", "drink", "lact", "leche",
+        "aliment", "comida", "bebida", "drink", "lact", "leche",
         "fruta", "verdura", "carne", "pescado", "panader", "despensa",
         "conserv", "huevo", "queso", "pasta", "arroz",
     )
-    return any(marker in category for marker in markers)
+    if any(marker in category for marker in markers):
+        return True
+    return bool(re.search(r"(?:^|[/\s])food(?:$|[/\s])", category))
 
 
 def crawl_food_searches(captured_at: str) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
