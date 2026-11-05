@@ -68,13 +68,15 @@ Implementación integrada y desplegada en `fase-5/backend-supabase`. CI correcto
 
 ## Fase 7 — Fuentes de precios y promociones
 
-En análisis de fuentes. La arquitectura debe soportar adaptadores desacoplados, atribución/licencia, fecha de observación, vigencia, ámbito geográfico y confianza. Se ha documentado la evaluación inicial en `docs/FUENTES_PRECIOS.md`. No se importarán precios de una zona distinta como si fueran locales ni se mostrarán observaciones caducadas como actuales.
+En análisis de fuentes. Se han evaluado las fuentes abiertas y los límites de Mercadona. Sus endpoints internos no documentados no se automatizarán hasta confirmar autorización o una fuente reutilizable. La arquitectura admitirá observaciones aportadas por usuarios y proveedores externos con licencias compatibles, manteniendo separados los conjuntos con obligaciones distintas. No se importarán precios de otra zona ni se mostrarán observaciones caducadas como actuales.
 
 - [x] Evaluar fuentes abiertas y condiciones de reutilización.
 - [x] Identificar limitaciones de cobertura para Mercadona, Lidl y Carrefour.
-- [ ] Elegir fuentes compatibles con el uso previsto y validar cobertura para el código postal de referencia.
-- [ ] Diseñar tablas de productos de mercado, establecimientos, fuentes y observaciones de precio/promoción.
-- [ ] Implementar el primer adaptador de datos verificables.
+- [x] Documentar la decisión de no automatizar endpoints privados de Mercadona sin autorización.
+- [ ] Comprobar cobertura real de CholloSúper y Open Prices en el ámbito 12006.
+- [ ] Diseñar tablas de observaciones de mercado, fuentes, ámbito geográfico y evidencia.
+- [ ] Implementar el primer adaptador con licencia reutilizable confirmada.
+- [ ] Permitir registrar observaciones propias sin confundirlas con un catálogo completo.
 - [ ] Mostrar fecha, fuente, zona y condiciones de cada precio/oferta.
 - [ ] Pruebas de calidad, caducidad, deduplicación y datos ausentes.
 
