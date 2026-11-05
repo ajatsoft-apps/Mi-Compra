@@ -139,6 +139,31 @@ class LidlCatalogImportTests(unittest.TestCase):
             "category": "Non-food/Home and Garden"
         }))
 
+
+    def test_food_search_accepts_product_when_lidl_category_is_numeric(self):
+        row = {
+            "product_name": "Leche semidesnatada Milbona",
+            "description": "Leche UHT 1 litro",
+            "category": "0/17/1740/174014",
+        }
+        self.assertTrue(importer.is_food_product(row, "leche"))
+
+    def test_food_search_does_not_accept_incidental_substring(self):
+        row = {
+            "product_name": "Plancha eléctrica compacta",
+            "description": "Ideal para cocinar",
+            "category": "0/17/1740/174014",
+        }
+        self.assertFalse(importer.is_food_product(row, "pan"))
+
+    def test_food_search_rejects_explicit_non_food_category(self):
+        row = {
+            "product_name": "Leche de limpieza para muebles",
+            "description": "",
+            "category": "Non-food/Home and Garden",
+        }
+        self.assertFalse(importer.is_food_product(row, "leche"))
+
     def test_region_resolver_uses_castellon_price_region(self):
         product = {
             "regionsV2": {
