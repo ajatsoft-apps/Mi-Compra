@@ -123,6 +123,18 @@ def fetch_page(name: str, url: str) -> dict[str, Any]:
                 "region_price_id": str(price_region_id),
                 "region_status": region_meta.get("status") if isinstance(region_meta, dict) else None,
                 "price_keys": sorted(region_price.keys()) if isinstance(region_price, dict) else [],
+                "future_prices_sample": [
+                    {
+                        "keys": sorted(item.keys()) if isinstance(item, dict) else [],
+                        "price": ((item.get("price") or {}).get("price") if isinstance(item, dict) and isinstance(item.get("price"), dict) else None),
+                        "old_price": ((item.get("price") or {}).get("oldPrice") if isinstance(item, dict) and isinstance(item.get("price"), dict) else None),
+                        "packaging": (((item.get("price") or {}).get("packaging") or {}).get("text") if isinstance(item, dict) and isinstance(item.get("price"), dict) else None),
+                        "start": item.get("startDate") if isinstance(item, dict) else None,
+                        "end": item.get("endDate") if isinstance(item, dict) else None,
+                    }
+                    for field in ("futurePrices", "futureLidlPlusPrices")
+                    for item in (region_price.get(field) or [])[:2]
+                ],
                 "price": price_data.get("price") if isinstance(price_data, dict) else None,
                 "old_price": price_data.get("oldPrice") if isinstance(price_data, dict) else None,
                 "packaging": (price_data.get("packaging") or {}).get("text") if isinstance(price_data, dict) else None,
