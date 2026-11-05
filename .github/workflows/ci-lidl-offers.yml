@@ -6,10 +6,13 @@ on:
       - 'fase-5/**'
     paths:
       - 'scripts/import_lidl_weekly_offers.py'
+      - 'scripts/import_lidl_catalog.py'
       - 'tests/test_import_lidl_weekly_offers.py'
+      - 'tests/test_lidl_catalog_import.py'
       - 'src/LidlOffers.tsx'
       - 'src/App.tsx'
       - '.github/workflows/import-lidl-offers.yml'
+      - '.github/workflows/import-lidl-catalog.yml'
       - 'supabase/migrations/*lidl*'
       - 'docs/FASE_9_LIDL_OFERTAS.md'
   push:
@@ -36,9 +39,22 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile importer and tests
-        run: python -m py_compile scripts/import_lidl_weekly_offers.py tests/test_import_lidl_weekly_offers.py
+        run: python -m py_compile scripts/import_lidl_weekly_offers.py scripts/import_lidl_catalog.py tests/test_import_lidl_weekly_offers.py tests/test_lidl_catalog_import.py
       - name: Run Lidl importer tests
         run: python -m unittest discover -s tests -p 'test_import_lidl_weekly_offers.py' -v
+      - name: Run Lidl catalog importer tests
+        run: python -m unittest discover -s tests -p 'test_lidl_catalog_import.py' -v
+      - name: Probe Lidl public catalogue pages
+        if: contains(github.event.pull_request.title, '[LIDL CATALOG PROBE]')
+        run: python scripts/import_lidl_catalog.py --dry-run --skip-online-catalog
+      - name: Upload Lidl catalogue probe report
+        if: always() && contains(github.event.pull_request.title, '[LIDL CATALOG PROBE]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: lidl-catalog-import-probe
+          path: lidl-catalog-import-report.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Install frontend dependencies
         run: npm ci
       - name: Type-check and build PWA
