@@ -50,7 +50,7 @@ Cerrada a nivel de implementación y despliegue de pruebas. Supabase Auth, Postg
 
 ## Fase 6 — Catálogo, preferencias y compras
 
-Implementación inicial completada en la rama `fase-6/catalogo-productos`; pendiente superar CI final y pruebas funcionales con dos cuentas antes de integrar en la rama desplegada.
+Implementación integrada y desplegada en `fase-5/backend-supabase`. CI correcto y pruebas funcionales del usuario en varios dispositivos/cuentas satisfactorias.
 
 - [x] Catálogo familiar con nombre, marca, EAN/GTIN, formato, categoría y notas.
 - [x] Añadir productos del catálogo a la lista conservando la referencia al producto.
@@ -60,14 +60,23 @@ Implementación inicial completada en la rama `fase-6/catalogo-productos`; pendi
 - [x] Historial de compras compartido por hogar.
 - [x] RLS, índices, restricciones de integridad y Realtime para las nuevas tablas.
 - [x] Caché local del catálogo para consulta y uso al añadir a la lista sin conexión.
-- [ ] Pruebas multiusuario de permisos, sincronización en tiempo real y conflictos.
-- [ ] Pruebas en iPhone, Android y escritorio.
+- [x] Pruebas multiusuario de catálogo y sincronización en varios dispositivos realizadas por el usuario.
+- [x] Pruebas funcionales de uso del catálogo en dispositivos reales realizadas por el usuario.
+- [ ] Pruebas prolongadas de conflictos y permisos de gestión familiar.
 
 **Límite actual:** la consulta del catálogo puede utilizar su última caché local, pero editar productos, preferencias, equivalencias y registrar compras requiere conexión. El historial de precios aún no existe: el registro de compras no se debe interpretar como un precio actual ni como una oferta.
 
 ## Fase 7 — Fuentes de precios y promociones
 
-Pendiente: adaptadores por cadena, trazabilidad, vigencia y calidad de datos.
+En análisis de fuentes. La arquitectura debe soportar adaptadores desacoplados, atribución/licencia, fecha de observación, vigencia, ámbito geográfico y confianza. Se ha documentado la evaluación inicial en `docs/FUENTES_PRECIOS.md`. No se importarán precios de una zona distinta como si fueran locales ni se mostrarán observaciones caducadas como actuales.
+
+- [x] Evaluar fuentes abiertas y condiciones de reutilización.
+- [x] Identificar limitaciones de cobertura para Mercadona, Lidl y Carrefour.
+- [ ] Elegir fuentes compatibles con el uso previsto y validar cobertura para el código postal de referencia.
+- [ ] Diseñar tablas de productos de mercado, establecimientos, fuentes y observaciones de precio/promoción.
+- [ ] Implementar el primer adaptador de datos verificables.
+- [ ] Mostrar fecha, fuente, zona y condiciones de cada precio/oferta.
+- [ ] Pruebas de calidad, caducidad, deduplicación y datos ausentes.
 
 ## Fase 8 — Comparador y optimizador
 
