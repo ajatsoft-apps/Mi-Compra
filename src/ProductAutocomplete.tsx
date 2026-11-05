@@ -74,8 +74,7 @@ function formatLidlPrice(value: Record<string, unknown> | null): string {
   if (!value) return ''
   const current = lidlPriceNumber(value)
   if (current === null) {
-    const message = String(value.discountMessage ?? '').trim()
-    return message
+    return String(value.discountMessage ?? '').trim()
   }
 
   const symbol = String(value.priceSymbol ?? '€')
@@ -89,7 +88,7 @@ function formatLidlPrice(value: Record<string, unknown> | null): string {
     ? 'Antes ' + (symbol === '€' ? euro.format(previous) : new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(previous) + ' ' + symbol)
     : ''
   const discount = String(value.discountMessage ?? '').trim()
-  return [currentText, previousText, discount].filter(Boolean).join(' · ')
+  return [previousText, currentText, discount].filter(Boolean).join('\\n')
 }
 
 export default function ProductAutocomplete({ value, disabled = false, onChange, onSelect }: Props) {
