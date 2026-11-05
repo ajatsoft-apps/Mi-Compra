@@ -202,8 +202,6 @@ export default function ProductCatalog({ householdId, userId, online, onBack, on
     setBusy(false)
   }
 
-  const chosenPreference = selectedProduct ? preferences[selectedProduct] : undefined
-
   return (
     <section className="account-page catalog-page" aria-label="Catálogo de productos">
       <div className="account-page-heading">
