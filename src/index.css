@@ -781,3 +781,24 @@ button { touch-action:manipulation; }
   .suggestion-copy small { font-size:15px; }
   .suggestion-price { font-size:15px; }
 }
+
+
+/* Store identity in autocomplete: subtle colored card outline, no logo column */
+.product-suggestion {
+  grid-template-columns:42px minmax(0,1fr) auto;
+  border:1.5px solid #e4ebe1;
+  border-radius:12px;
+}
+.product-suggestion.mercadona { border-color:#75b77a; }
+.product-suggestion.lidl { border-color:#e5bd35; }
+.product-suggestion .supermarket-mark { display:none; }
+@media (max-width:760px) {
+  .product-suggestion {
+    grid-template-columns:90px minmax(0,1fr) auto;
+  }
+}
+@media (max-width:390px) {
+  .product-suggestion {
+    grid-template-columns:80px minmax(0,1fr);
+  }
+}
