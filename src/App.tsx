@@ -696,13 +696,15 @@ function App() {
 
   function addStoreProductToList(product: ProductSuggestion) {
     const now = Date.now()
+    const parsedQuantity = Number(quantity)
+    const selectedQuantity = Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1
     const newItem: ShoppingItem = {
       id: createItemId(),
       name: product.name,
-      quantity: 1,
-      unit: 'ud.',
+      quantity: selectedQuantity,
+      unit: unit.trim() || 'ud.',
       category: product.category,
-      note: product.note,
+      note: [product.note, note.trim()].filter(Boolean).join(' · '),
       completed: false,
       createdAt: now,
       updatedAt: now,
@@ -716,7 +718,7 @@ function App() {
       const existing = current.find((item) => canMergeShoppingItems(item, newItem))
       const next = existing
         ? current.map((item) => item.id === existing.id
-          ? { ...item, quantity: item.quantity + 1, note: item.note.trim() || newItem.note, updatedAt: now }
+          ? { ...item, quantity: item.quantity + selectedQuantity, note: item.note.trim() || newItem.note, updatedAt: now }
           : item)
         : [newItem, ...current]
       itemsRef.current = next
