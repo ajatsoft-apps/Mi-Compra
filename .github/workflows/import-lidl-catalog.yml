@@ -1,0 +1,54 @@
+name: Import Lidl product catalogue
+
+on:
+  schedule:
+    - cron: '30 7 * * 1,5'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch containing the importer to run
+        required: true
+        default: fase-5/backend-supabase
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lidl-catalog-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout importer branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'fase-5/backend-supabase' }}
+
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate importer syntax
+        run: python -m py_compile scripts/import_lidl_catalog.py
+
+      - name: Import Lidl online catalogue and store offers
+        run: python scripts/import_lidl_catalog.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIDL_REGION_NAME: Castellón
+          LIDL_CATALOG_MIN_PRODUCTS: '6000'
+
+      - name: Upload import report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lidl-catalog-import-report
+          path: lidl-catalog-import-report.json
+          if-no-files-found: ignore
+          retention-days: 14
