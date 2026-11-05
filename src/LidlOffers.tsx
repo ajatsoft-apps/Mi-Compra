@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './data/supabaseClient'
 
-type Props = { online: boolean; onBack: () => void; onAddToBasket: (name: string, unitPrice: number | null) => void }
+type Props = { online: boolean; onBack: () => void; onAddToBasket: (name: string, unitPrice: number | null, unit: string) => void }
 type Snapshot = {
   id: string
   store_key: string
@@ -197,7 +197,7 @@ export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
                       </div>
                     )}
                     {offer.offer_type && <small>Condiciones: {offer.offer_type}</small>}
-                    <button className="add-button lidl-offer-add" type="button" onClick={() => onAddToBasket(offer.title, currentPrice)}>＋ Añadir a cesta</button>
+                    <button className="add-button lidl-offer-add" type="button" onClick={() => onAddToBasket(offer.title, currentPrice, price.symbol.startsWith('€/') ? price.symbol.slice(2) : 'ud.')}>＋ Añadir a cesta</button>
                   </div>
                 </li>
               )
