@@ -13,6 +13,7 @@ export type ShoppingItem = {
   createdAt: number
   updatedAt: number
   deletedAt?: number | null
+  catalogProductId?: string | null
 }
 
 export type Household = {
