@@ -172,6 +172,20 @@ function App() {
   const hasInitialSyncRef = useRef(false)
   const lastSyncedSnapshotRef = useRef('')
 
+  useEffect(() => {
+    if (!mobileAddOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileAddOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [mobileAddOpen])
+
   useEffect(() => { itemsRef.current = items }, [items])
   useEffect(() => { workspaceRef.current = { household, list } }, [household, list])
 
@@ -1118,9 +1132,9 @@ function App() {
 
         <div className="content-grid">
           {mobileAddOpen && <button type="button" className="mobile-sheet-backdrop" aria-label="Cerrar formulario de producto" onClick={() => setMobileAddOpen(false)} />}
-          <section className={mobileAddOpen ? 'panel add-panel mobile-add-open' : 'panel add-panel'}>
+          <section className={mobileAddOpen ? 'panel add-panel mobile-add-open' : 'panel add-panel'} role={mobileAddOpen ? 'dialog' : undefined} aria-modal={mobileAddOpen || undefined} aria-labelledby="add-product-title">
             <div className="panel-heading">
-              <div><p className="eyebrow">AÑADIR A LA LISTA</p><h2>¿Qué hace falta?</h2></div>
+              <div><p className="eyebrow">AÑADIR A LA LISTA</p><h2 id="add-product-title">¿Qué hace falta?</h2></div>
               <button type="button" className="mobile-sheet-close" aria-label="Cerrar" onClick={() => setMobileAddOpen(false)}>×</button>
               <span className="heading-plus">＋</span>
             </div>
@@ -1175,7 +1189,7 @@ function App() {
                   </div>}
                 </div>
               </div>
-              <button type="button" className="mobile-add-trigger" onClick={() => setMobileAddOpen(true)}><span>＋</span> Añadir producto</button>
+              <button type="button" className="mobile-add-trigger" aria-haspopup="dialog" aria-expanded={mobileAddOpen} onClick={() => setMobileAddOpen(true)}><span>＋</span> Añadir producto</button>
             </div>
             {exportFeedback && <p className="export-feedback" role="status">{exportFeedback}</p>}
             <div className="store-tabs" role="tablist" aria-label="Listas de compra">
