@@ -607,7 +607,7 @@ function App() {
   function addCatalogProductToList(product: CatalogProduct) {
     const now = Date.now()
     const format = product.format_quantity ? product.format_quantity + ' ' + product.format_unit : ''
-    const details = [product.brand, format].filter(Boolean).join(' · ')
+    const details = [product.preferredBrand || product.brand, product.preferredFormat || format].filter(Boolean).join(' · ')
     const newItem: ShoppingItem = {
       id: createItemId(),
       name: product.name,
