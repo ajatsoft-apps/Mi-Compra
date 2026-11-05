@@ -25,14 +25,26 @@ def request_json(url: str) -> dict:
     return response.json()
 
 
-def latest_release() -> tuple[str, str, str]:
+def latest_release() -> tuple[str, str, str | None, str]:
     release = request_json(f"https://api.github.com/repos/{REPO}/releases/latest")
     if release.get("draft") or not release.get("tag_name", "").startswith("prices-"):
         raise RuntimeError("La última release de OpenCesta no es un snapshot de precios.")
-    asset = next((item for item in release.get("assets", []) if item.get("name") == "prices.tar.gz"), None)
-    if not asset:
+    assets = {item.get("name"): item for item in release.get("assets", [])}
+    prices_asset = assets.get("prices.tar.gz")
+    if not prices_asset:
         raise RuntimeError("La última release no contiene prices.tar.gz.")
-    return release["tag_name"], asset["browser_download_url"], release["html_url"]
+    catalog_asset = assets.get("catalog-mercadona.parquet")
+    catalog_url = catalog_asset["browser_download_url"] if catalog_asset else None
+    return release["tag_name"], prices_asset["browser_download_url"], catalog_url, release["html_url"]
+
+
+def download_file(url: str, destination: pathlib.Path) -> None:
+    response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=120, stream=True)
+    response.raise_for_status()
+    with destination.open("wb") as handle:
+        for chunk in response.iter_content(chunk_size=1024 * 256):
+            if chunk:
+                handle.write(chunk)
 
 
 def safe_extract(archive_path: pathlib.Path, target: pathlib.Path) -> None:
@@ -67,7 +79,7 @@ def to_optional(value):
     return value
 
 
-def normalize_rows(frame: pl.DataFrame) -> tuple[str, list[dict]]:
+def normalize_rows(frame: pl.DataFrame, catalog_frame: pl.DataFrame | None = None) -> tuple[str, list[dict]]:
     required = {"chain", "zone", "sku", "display_name", "unit_price", "captured_at"}
     missing = required.difference(frame.columns)
     if missing:
@@ -80,6 +92,26 @@ def normalize_rows(frame: pl.DataFrame) -> tuple[str, list[dict]]:
         raise RuntimeError(f"El fichero contiene varias fechas de captura: {captured_dates}")
     captured_at = str(captured_dates[0])
 
+    if catalog_frame is not None:
+        catalog_required = {"chain", "sku", "ean", "brand", "origin", "packaging", "legal_name", "enriched_at"}
+        if catalog_required.issubset(catalog_frame.columns):
+            catalog_rows = (
+                catalog_frame
+                .filter(pl.col("chain") == CHAIN)
+                .select(
+                    "sku",
+                    pl.col("ean").alias("catalog_ean"),
+                    pl.col("brand").alias("catalog_brand"),
+                    pl.col("origin").alias("catalog_origin"),
+                    pl.col("packaging").alias("catalog_packaging"),
+                    pl.col("legal_name").alias("catalog_legal_name"),
+                    pl.col("enriched_at").alias("catalog_enriched_at"),
+                )
+            )
+            frame = frame.join(catalog_rows, on="sku", how="left")
+        else:
+            raise RuntimeError("El catálogo enriquecido de OpenCesta ha cambiado de esquema.")
+
     rows = []
     for raw in frame.iter_rows(named=True):
         if raw["chain"] != CHAIN or raw["zone"] != ZONE:
@@ -89,8 +121,12 @@ def normalize_rows(frame: pl.DataFrame) -> tuple[str, list[dict]]:
             "zone": ZONE,
             "sku": str(raw["sku"]),
             "product_name": str(raw["display_name"]).strip(),
-            "brand": to_optional(raw.get("brand")),
-            "ean": to_optional(raw.get("ean")),
+            "brand": to_optional(raw.get("brand")) or to_optional(raw.get("catalog_brand")),
+            "ean": to_optional(raw.get("ean")) or to_optional(raw.get("catalog_ean")),
+            "origin": to_optional(raw.get("catalog_origin")) or to_optional(raw.get("origin")),
+            "packaging": to_optional(raw.get("catalog_packaging")),
+            "legal_name": to_optional(raw.get("catalog_legal_name")),
+            "enriched_at": to_optional(raw.get("catalog_enriched_at")),
             "category": str(raw.get("category") or ""),
             "subcategory": str(raw.get("subcategory") or ""),
             "unit_price": to_optional(raw.get("unit_price")),
@@ -177,24 +213,25 @@ def main() -> None:
     if not args.dry_run and (not supabase_url or not service_key):
         raise RuntimeError("Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el entorno.")
 
-    tag, download_url, release_url = latest_release()
+    tag, prices_url, catalog_url, release_url = latest_release()
     print(f"OpenCesta release: {tag}")
     with tempfile.TemporaryDirectory(prefix="mi-compra-opencesta-") as temporary:
         root = pathlib.Path(temporary)
         archive_path = root / "prices.tar.gz"
-        response = requests.get(download_url, headers={"User-Agent": USER_AGENT}, timeout=120, stream=True)
-        response.raise_for_status()
-        with archive_path.open("wb") as handle:
-            for chunk in response.iter_content(chunk_size=1024 * 256):
-                if chunk:
-                    handle.write(chunk)
+        download_file(prices_url, archive_path)
         extracted = root / "extracted"
         extracted.mkdir()
         safe_extract(archive_path, extracted)
         parquet_path = latest_zone_snapshot(extracted)
         frame = pl.read_parquet(parquet_path)
-        captured_at, rows = normalize_rows(frame)
-        print(f"Snapshot {CHAIN}/{ZONE} · {captured_at} · {len(rows)} productos · validación correcta")
+        catalog_frame = None
+        if catalog_url:
+            catalog_path = root / "catalog-mercadona.parquet"
+            download_file(catalog_url, catalog_path)
+            catalog_frame = pl.read_parquet(catalog_path)
+        captured_at, rows = normalize_rows(frame, catalog_frame)
+        enriched = sum(1 for row in rows if row["ean"] or row["brand"])
+        print(f"Snapshot {CHAIN}/{ZONE} · {captured_at} · {len(rows)} productos · {enriched} con EAN/marca · validación correcta")
         if args.dry_run:
             print("Dry run: no se ha modificado Supabase.")
             return
