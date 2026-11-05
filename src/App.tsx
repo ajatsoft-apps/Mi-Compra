@@ -147,9 +147,6 @@ function App() {
   const [marketPricesOpen, setMarketPricesOpen] = useState(false)
   const [lidlOffersOpen, setLidlOffersOpen] = useState(false)
   const [optimizerOpen, setOptimizerOpen] = useState(false)
-  const [catalogSavePrompt, setCatalogSavePrompt] = useState<{ product: ProductSuggestion; itemId: string } | null>(null)
-  const [catalogSaveBusy, setCatalogSaveBusy] = useState(false)
-  const [catalogSaveFeedback, setCatalogSaveFeedback] = useState('')
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -936,69 +933,8 @@ function App() {
     setPrice('')
     setFilter('Pendientes')
     setMobileAddOpen(false)
-    if (session && hasRemoteHousehold && !syncDisconnected) {
-      setCatalogSaveFeedback('')
-      setCatalogSavePrompt({ product, itemId })
-    }
   }
 
-  async function saveSelectedProductToCatalog() {
-    const pending = catalogSavePrompt
-    if (!pending || !supabase || !session || !hasRemoteHousehold || !isOnline) return
-    const db = supabase
-    setCatalogSaveBusy(true)
-    setCatalogSaveFeedback('')
-    try {
-      const lookup = () => db
-        .from('household_products')
-        .select('id')
-        .eq('household_id', household.id)
-        .ilike('name', pending.product.name)
-        .eq('brand', pending.product.brand)
-        .is('archived_at', null)
-        .limit(1)
-        .maybeSingle()
-      const { data: existing, error: lookupError } = await lookup()
-      if (lookupError) throw lookupError
-      let catalogId = existing?.id as string | undefined
-      if (!catalogId) {
-        const { data: inserted, error: insertError } = await db
-          .from('household_products')
-          .insert({
-            household_id: household.id,
-            created_by: session.user.id,
-            name: pending.product.name,
-            brand: pending.product.brand,
-            category: pending.product.category,
-            format_unit: 'ud.',
-            notes: 'Guardado desde el buscador de ' + storeLabels[pending.product.supermarket],
-          })
-          .select('id')
-          .single()
-        if (insertError) {
-          if (insertError.code !== '23505') throw insertError
-          const { data: duplicate, error: duplicateError } = await lookup()
-          if (duplicateError || !duplicate) throw duplicateError ?? insertError
-          catalogId = duplicate.id
-        } else {
-          catalogId = inserted.id
-        }
-      }
-      const savedAt = Date.now()
-      setItems((current) => {
-        const next = current.map((item) => item.id === pending.itemId
-          ? { ...item, catalogProductId: catalogId ?? null, updatedAt: savedAt }
-          : item)
-        itemsRef.current = next
-        return next
-      })
-      setCatalogSavePrompt(null)
-    } catch (error) {
-      setCatalogSaveFeedback(error instanceof Error ? error.message : 'No se pudo guardar en el catálogo.')
-    } finally {
-      setCatalogSaveBusy(false)
-    }
-  }
 
   function toggleItem(id: string) {
     const now = Date.now()
@@ -1071,21 +1007,7 @@ function App() {
           </div>
         </header>
 
-        {catalogSavePrompt && (
-          <div className="catalog-modal-backdrop" role="presentation" onClick={() => { if (!catalogSaveBusy) setCatalogSavePrompt(null) }}>
-            <section className="catalog-modal catalog-favorite-modal" role="dialog" aria-modal="true" aria-labelledby="catalog-favorite-title" onClick={(event) => event.stopPropagation()}>
-              <p className="eyebrow">CATÁLOGO FAMILIAR</p>
-              <h2 id="catalog-favorite-title">¿Guardar también este producto?</h2>
-              <p className="auth-note"><strong>{catalogSavePrompt.product.name}</strong> ya se ha añadido a tu cesta. Si lo guardas, quedará como habitual del hogar para añadirlo más rápido la próxima vez.</p>
-              <p className="auth-note">No guardamos el precio. Al añadirlo desde el catálogo consultaremos el precio vigente del supermercado seleccionado.</p>
-              {catalogSaveFeedback && <p className="auth-feedback error">{catalogSaveFeedback}</p>}
-              <div className="catalog-modal-actions">
-                <button className="secondary-action" type="button" disabled={catalogSaveBusy} onClick={() => setCatalogSavePrompt(null)}>Ahora no</button>
-                <button className="add-button" type="button" disabled={catalogSaveBusy || !isOnline} onClick={() => void saveSelectedProductToCatalog()}>{catalogSaveBusy ? 'Guardando…' : '☆ Guardar en catálogo'}</button>
-              </div>
-            </section>
-          </div>
-        )}
+
         {optimizerOpen ? (
           <BasketOptimizer items={activeItems.filter((item) => !item.completed)} householdId={household.id} online={isOnline} onBack={() => setOptimizerOpen(false)} />
         ) : marketPricesOpen ? (
