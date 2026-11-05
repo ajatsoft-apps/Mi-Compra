@@ -50,7 +50,20 @@ Cerrada a nivel de implementación y despliegue de pruebas. Supabase Auth, Postg
 
 ## Fase 6 — Catálogo, preferencias y compras
 
-Pendiente: productos, formatos, equivalencias, preferencias y registro de compras.
+Implementación inicial completada en la rama `fase-6/catalogo-productos`; pendiente superar CI final y pruebas funcionales con dos cuentas antes de integrar en la rama desplegada.
+
+- [x] Catálogo familiar con nombre, marca, EAN/GTIN, formato, categoría y notas.
+- [x] Añadir productos del catálogo a la lista conservando la referencia al producto.
+- [x] Preferencias familiares de marca, formato y aceptación de sustitutos.
+- [x] Equivalencias y sustitutos explícitos, sin asignación automática por similitud.
+- [x] Registro de compras con cantidad, precio unitario, total y establecimiento.
+- [x] Historial de compras compartido por hogar.
+- [x] RLS, índices, restricciones de integridad y Realtime para las nuevas tablas.
+- [x] Caché local del catálogo para consulta y uso al añadir a la lista sin conexión.
+- [ ] Pruebas multiusuario de permisos, sincronización en tiempo real y conflictos.
+- [ ] Pruebas en iPhone, Android y escritorio.
+
+**Límite actual:** la consulta del catálogo puede utilizar su última caché local, pero editar productos, preferencias, equivalencias y registrar compras requiere conexión. El historial de precios aún no existe: el registro de compras no se debe interpretar como un precio actual ni como una oferta.
 
 ## Fase 7 — Fuentes de precios y promociones
 
