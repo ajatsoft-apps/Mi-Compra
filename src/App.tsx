@@ -22,6 +22,8 @@ const SYNC_DISCONNECTED_KEY = 'mi-compra.sync-disconnected.v1'
 const categories: Category[] = ['Fruta y verdura', 'Lácteos', 'Despensa', 'Bebidas', 'Hogar', 'Otros']
 const firstEnabledStore: Exclude<ShoppingStore, 'general'> = 'lidl'
 const storeLabels: Record<ShoppingStore, string> = { lidl: 'Lidl', mercadona: 'Mercadona', general: 'Otros' }
+const euroCurrency = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+
 const categoryIcons: Record<Category, string> = {
   'Fruta y verdura': '🥑',
   Lácteos: '🥛',
@@ -46,6 +48,7 @@ function canMergeShoppingItems(existing: ShoppingItem, incoming: ShoppingItem): 
   if (normalizeItemValue(existing.name) !== normalizeItemValue(incoming.name)) return false
   if (normalizeItemValue(existing.unit) !== normalizeItemValue(incoming.unit)) return false
   if (existing.catalogProductId && incoming.catalogProductId && existing.catalogProductId !== incoming.catalogProductId) return false
+  if (existing.unitPrice != null && incoming.unitPrice != null && Math.abs(existing.unitPrice - incoming.unitPrice) >= 0.01) return false
   if (existing.catalogProductId === incoming.catalogProductId && existing.catalogProductId) return true
   return !existing.note.trim() || !incoming.note.trim() || normalizeItemValue(existing.note) === normalizeItemValue(incoming.note)
 }
@@ -73,6 +76,7 @@ function App() {
   const [unit, setUnit] = useState('ud.')
   const [category, setCategory] = useState<Category>('Otros')
   const [note, setNote] = useState('')
+  const [price, setPrice] = useState('')
   const [filter, setFilter] = useState<Filter>('Pendientes')
   const [selectedStore, setSelectedStore] = useState<ShoppingStore>(firstEnabledStore)
   const [accountScreenOpen, setAccountScreenOpen] = useState(false)
@@ -331,6 +335,9 @@ function App() {
   const storeItems = useMemo(() => activeItems.filter((item) => (item.supermarket ?? 'general') === selectedStore), [activeItems, selectedStore])
   const storePendingCount = storeItems.filter((item) => !item.completed).length
   const storeCompletedCount = storeItems.length - storePendingCount
+  const storePricedItems = storeItems.filter((item) => item.unitPrice != null && Number.isFinite(item.unitPrice) && item.unitPrice >= 0)
+  const storeMissingPriceCount = storeItems.length - storePricedItems.length
+  const storeEstimatedTotal = storePricedItems.reduce((total, item) => total + (item.unitPrice ?? 0) * item.quantity, 0)
   const visibleItems = useMemo(() => {
     const filtered = storeItems.filter((item) => {
       if (filter === 'Pendientes') return !item.completed
@@ -614,6 +621,8 @@ function App() {
     const parsedQuantity = Number(quantity)
     if (!cleanName || !Number.isFinite(parsedQuantity) || parsedQuantity <= 0) return
 
+    const parsedPrice = price.trim() === '' ? null : Number(price.replace(',', '.'))
+    if (parsedPrice !== null && (!Number.isFinite(parsedPrice) || parsedPrice < 0)) return
     const now = Date.now()
     const newItem: ShoppingItem = {
       id: createItemId(),
@@ -630,6 +639,7 @@ function App() {
       deletedAt: null,
       catalogProductId: null,
       supermarket: firstEnabledStore,
+      unitPrice: parsedPrice,
     }
     setItems((current) => {
       const existing = current.find((item) => canMergeShoppingItems(item, newItem))
@@ -640,6 +650,7 @@ function App() {
               quantity: item.quantity + newItem.quantity,
               note: item.note.trim() || newItem.note,
               catalogProductId: item.catalogProductId ?? newItem.catalogProductId,
+              unitPrice: item.unitPrice ?? newItem.unitPrice,
               updatedAt: now,
             }
           : item)
@@ -651,6 +662,7 @@ function App() {
     setQuantity('1')
     setUnit('ud.')
     setNote('')
+    setPrice('')
   }
 
 
@@ -713,12 +725,13 @@ function App() {
       deletedAt: null,
       catalogProductId: null,
       supermarket: product.supermarket,
+      unitPrice: product.priceNumber,
     }
     setItems((current) => {
       const existing = current.find((item) => canMergeShoppingItems(item, newItem))
       const next = existing
         ? current.map((item) => item.id === existing.id
-          ? { ...item, quantity: item.quantity + selectedQuantity, note: item.note.trim() || newItem.note, updatedAt: now }
+          ? { ...item, quantity: item.quantity + selectedQuantity, note: item.note.trim() || newItem.note, unitPrice: item.unitPrice ?? newItem.unitPrice, updatedAt: now }
           : item)
         : [newItem, ...current]
       itemsRef.current = next
@@ -729,6 +742,7 @@ function App() {
     setQuantity('1')
     setUnit('ud.')
     setNote('')
+    setPrice('')
     setFilter('Pendientes')
   }
 
@@ -997,6 +1011,10 @@ function App() {
                   </select>
                 </div>
               </div>
+              <div className="price-field">
+                <label className="field-label" htmlFor="product-price">Precio por unidad (€) <span className="optional">(opcional)</span></label>
+                <input id="product-price" className="text-input" type="number" min="0" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Se completa al elegir un producto" />
+              </div>
               <label className="field-label category-label">Categoría</label>
               <div className="category-options">
                 {categories.map((option) => (
@@ -1008,7 +1026,7 @@ function App() {
               <label className="field-label" htmlFor="product-note">Nota <span className="optional">(opcional)</span></label>
               <input id="product-note" className="text-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Marca, formato o algún detalle..." maxLength={140} />
               <p className="autocomplete-fallback-note">Si no aparece en los catálogos, se añadirá como producto genérico a la primera lista activa: {storeLabels[firstEnabledStore]}.</p>
-              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}>Añadir como producto genérico <span>＋</span></button>
+              <button className="add-button" type="submit" disabled={!isReady || Boolean(storageError) || !name.trim() || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0 || (price.trim() !== '' && (!Number.isFinite(Number(price.replace(',', '.'))) || Number(price.replace(',', '.')) < 0))}>Añadir como producto genérico <span>＋</span></button>
             </form>
           </section>
 
@@ -1025,6 +1043,10 @@ function App() {
                   <span className="store-tab-count">{activeItems.filter((item) => (item.supermarket ?? 'general') === store && !item.completed).length}</span>
                 </button>
               ))}
+            </div>
+            <div className="list-total" aria-live="polite">
+              <div><span>Total estimado</span><strong>{euroCurrency.format(storeEstimatedTotal)}</strong></div>
+              <small>{storeMissingPriceCount > 0 ? `${storeMissingPriceCount} ${storeMissingPriceCount === 1 ? 'producto sin precio' : 'productos sin precio'} · el total es parcial` : 'Todos los productos tienen precio'}</small>
             </div>
             <div className="filter-tabs" role="tablist" aria-label="Filtrar productos">
               {(['Pendientes', 'Todo', 'Comprados'] as Filter[]).map((option) => (
@@ -1051,6 +1073,11 @@ function App() {
                     <div className="item-details">
                       <strong>{item.name}</strong>
                       <span>{item.quantity} {item.unit}{item.note ? ` · ${item.note}` : ''}</span>
+                    </div>
+                    <div className="item-price">
+                      {item.unitPrice != null && Number.isFinite(item.unitPrice)
+                        ? <><strong>{euroCurrency.format(item.unitPrice * item.quantity)}</strong><small>{euroCurrency.format(item.unitPrice)} / {item.unit}</small></>
+                        : <small>Sin precio</small>}
                     </div>
                     <button className="remove-button" type="button" onClick={() => removeItem(item.id)} aria-label={`Eliminar ${item.name}`}>×</button>
                   </li>
