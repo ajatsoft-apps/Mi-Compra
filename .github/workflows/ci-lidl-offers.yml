@@ -46,7 +46,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_lidl_catalog_import.py' -v
       - name: Probe Lidl public catalogue pages
         if: contains(github.event.pull_request.title, '[LIDL CATALOG PROBE]')
-        run: python scripts/import_lidl_catalog.py --dry-run --skip-online-catalog
+        run: python scripts/import_lidl_catalog.py --dry-run --max-pages 2
       - name: Upload Lidl catalogue probe report
         if: always() && contains(github.event.pull_request.title, '[LIDL CATALOG PROBE]')
         uses: actions/upload-artifact@v4
