@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { supabase } from './data/supabaseClient'
-import type { Category } from './domain/shopping'
-
-export type ShoppingStore = 'lidl' | 'mercadona' | 'general'
+import type { Category, ShoppingStore } from './domain/shopping'
 
 export type ProductSuggestion = {
   id: string
@@ -72,10 +71,12 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const snapshotCache = useRef<Promise<{ mercadonaSnapshotId: string | null; lidlSnapshots: LidlSnapshot[] }> | null>(null)
 
   useEffect(() => {
     const term = value.trim()
-    if (!supabase || term.length < 2) {
+    const client = supabase
+    if (!client || term.length < 2) {
       setSuggestions([])
       setLoading(false)
       setError('')
@@ -88,47 +89,55 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
     }, 220)
 
     async function searchProducts(searchTerm: string) {
-      if (!supabase) return
       setLoading(true)
       setError('')
       const pattern = '%' + searchTerm.replace(/[\\%_]/g, '\\$&') + '%'
       try {
-        const [mercadonaSnapshot, lidlSnapshots] = await Promise.all([
-          supabase.from('market_price_snapshots')
-            .select('id')
-            .eq('source', 'opencesta')
-            .eq('chain', 'mercadona')
-            .eq('zone', 'vlc1')
-            .order('captured_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase.from('lidl_offer_snapshots')
-            .select('id,store_key,store_name,captured_at')
-            .order('captured_at', { ascending: false })
-            .limit(40),
-        ])
-
-        if (mercadonaSnapshot.error) throw mercadonaSnapshot.error
-        if (lidlSnapshots.error) throw lidlSnapshots.error
-
-        const mercadonaPromise = mercadonaSnapshot.data
-          ? supabase.from('market_price_observations')
+        if (!snapshotCache.current) {
+          snapshotCache.current = Promise.all([
+            client.from('market_price_snapshots')
+              .select('id')
+              .eq('source', 'opencesta')
+              .eq('chain', 'mercadona')
+              .eq('zone', 'vlc1')
+              .order('captured_at', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            client.from('lidl_offer_snapshots')
+              .select('id,store_key,store_name,captured_at')
+              .order('captured_at', { ascending: false })
+              .limit(40),
+          ]).then(([mercadonaSnapshot, lidlSnapshotResult]) => {
+            if (mercadonaSnapshot.error) throw mercadonaSnapshot.error
+            if (lidlSnapshotResult.error) throw lidlSnapshotResult.error
+            const latestByStore = new Map<string, LidlSnapshot>()
+            for (const snapshot of (lidlSnapshotResult.data ?? []) as LidlSnapshot[]) {
+              if (!latestByStore.has(snapshot.store_key)) latestByStore.set(snapshot.store_key, snapshot)
+            }
+            return {
+              mercadonaSnapshotId: mercadonaSnapshot.data?.id ?? null,
+              lidlSnapshots: [...latestByStore.values()].filter((snapshot) =>
+                Date.parse(snapshot.captured_at) >= Date.now() - 14 * 24 * 60 * 60 * 1000),
+            }
+          }).catch((cause: unknown) => {
+            snapshotCache.current = null
+            throw cause
+          })
+        }
+        const { mercadonaSnapshotId, lidlSnapshots } = await snapshotCache.current
+        const mercadonaPromise = mercadonaSnapshotId
+          ? client.from('market_price_observations')
               .select('sku,product_name,brand,unit_price,unit_size,size_format,is_pack,category,thumbnail_url')
-              .eq('snapshot_id', mercadonaSnapshot.data.id)
+              .eq('snapshot_id', mercadonaSnapshotId)
               .ilike('product_name', pattern)
               .order('product_name', { ascending: true })
               .limit(8)
           : Promise.resolve({ data: [], error: null })
 
-        const latestByStore = new Map<string, LidlSnapshot>()
-        for (const snapshot of (lidlSnapshots.data ?? []) as LidlSnapshot[]) {
-          if (!latestByStore.has(snapshot.store_key)) latestByStore.set(snapshot.store_key, snapshot)
-        }
-        const latestSnapshots = [...latestByStore.values()]
-        const lidlPromise = latestSnapshots.length > 0
-          ? supabase.from('lidl_offer_observations')
+        const lidlPromise = lidlSnapshots.length > 0
+          ? client.from('lidl_offer_observations')
               .select('snapshot_id,offer_id,title,brand,category,end_validity_date,price_box,image_url')
-              .in('snapshot_id', latestSnapshots.map((snapshot) => snapshot.id))
+              .in('snapshot_id', lidlSnapshots.map((snapshot) => snapshot.id))
               .ilike('title', pattern)
               .order('title', { ascending: true })
               .limit(8)
@@ -157,7 +166,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
           }
         })
 
-        const snapshotById = new Map(latestSnapshots.map((snapshot) => [snapshot.id, snapshot]))
+        const snapshotById = new Map(lidlSnapshots.map((snapshot) => [snapshot.id, snapshot]))
         const now = Date.now()
         const lidlProducts = ((lidlResult.data ?? []) as LidlOffer[])
           .filter((offer) => !offer.end_validity_date || Date.parse(offer.end_validity_date) >= now)
@@ -194,7 +203,7 @@ export default function ProductAutocomplete({ value, disabled = false, onChange,
     }
   }, [value])
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter' && suggestions.length > 0) {
       event.preventDefault()
       onSelect(suggestions[0])
