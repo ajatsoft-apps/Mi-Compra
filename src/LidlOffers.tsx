@@ -61,6 +61,7 @@ function displayedPrice(value: Record<string, unknown> | null): { offer: number 
 
 export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [coveredStores, setCoveredStores] = useState('')
   const [offers, setOffers] = useState<Offer[]>([])
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<OfferTab>('food')
@@ -87,12 +88,17 @@ export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
           .from('lidl_offer_snapshots')
           .select('id,store_key,store_name,store_postal_code,captured_on,captured_at,row_count')
           .order('captured_at', { ascending: false })
-          .limit(1)
+          .limit(20)
         if (snapshotError) throw snapshotError
-        const latest = (snapshotData ?? []) as Snapshot[]
+        const byStore = new Map<string, Snapshot>()
+        for (const item of (snapshotData ?? []) as Snapshot[]) {
+          if (!byStore.has(item.store_key)) byStore.set(item.store_key, item)
+        }
+        const latest = [...byStore.values()]
         if (!active) return
         setSnapshot(latest[0] ?? null)
-        if (!latest[0]) {
+        setCoveredStores(latest.map((item) => item.store_name).join(', '))
+        if (latest.length === 0) {
           setOffers([])
           setLoading(false)
           return
@@ -100,9 +106,9 @@ export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
         const { data: offerData, error: offerError } = await supabase
           .from('lidl_offer_observations')
           .select('snapshot_id,offer_id,title,brand,category,offer_type,redemption_channel,product_ids,start_validity_date,end_validity_date,price_box,image_url')
-          .eq('snapshot_id', latest[0].id)
+          .in('snapshot_id', latest.map((item) => item.id))
           .order('title', { ascending: true })
-          .limit(500)
+          .limit(1500)
         if (offerError) throw offerError
         if (active) {
           const unique = new Map<string, Offer>()
@@ -139,7 +145,7 @@ export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
         <button className="back-to-list" type="button" onClick={onBack}>← Volver a la lista</button>
         <p className="eyebrow">OFERTAS SEMANALES · LIDL</p>
         <h1>Ofertas Lidl</h1>
-        <p>Ofertas generales de Lidl España. Se muestran una sola vez, sin repetirlas por cada tienda.</p>
+        <p>Ofertas Lidl Plus vigentes de las tiendas configuradas. Se consolidan para no repetir promociones.</p>
       </div>
 
       {!loading && (
@@ -167,7 +173,7 @@ export default function LidlOffers({ online, onBack, onAddToBasket }: Props) {
           </div>
           <label className="field-label" htmlFor="lidl-offer-search">Buscar en {tab === 'food' ? 'alimentación' : 'bazar'}</label>
           <input id="lidl-offer-search" className="text-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. aceite, salmón, detergente…" />
-          <small className="lidl-offer-capture">Última captura: {formatDate(snapshot.captured_on)} · {snapshot.store_name}</small>
+          <small className="lidl-offer-capture">Última captura: {formatDate(snapshot.captured_on)} · Tiendas: {coveredStores || snapshot.store_name}</small>
         </section>
       )}
 
